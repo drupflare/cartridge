@@ -1,0 +1,11 @@
+{
+	"editor.quickSuggestions": {
+		"strings": "on"
+	},
+	"editor.formatOnSave": true,
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"prettier.useTabs": true,
+	"prettier.tabWidth": 4,
+	"prettier.printWidth": 100,
+	"npm.packageManager": "bun"
+}
