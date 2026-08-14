@@ -1,16 +1,15 @@
+/**
+ * The high-level default: hand it a wasm interpreter, get back something you can call.
+ *
+ * The interpreter arrives as `{ FS, callMain }`. See ADVANCED_USAGE.md for the adapter each
+ * language needs.
+ */
+
 import { GateError, InterpreterError } from './errors';
 import { createMask, type Mask, type MaskStats } from './mask';
 import { mkdirp, mountRecord, type FileMap, type MountFS } from './mount';
 import { Gate, doGate, type BlockingContext, type GateLike, type GateStats } from './serialize';
 import { concatBytes, decodeJson, encodeJson, splitLines, toBytes, toUtf8 } from './util';
-
-/**
- * The high-level default: hand it a wasm interpreter, get back something you can call.
- *
- * NOTHING HERE KNOWS WHAT PHP IS. The interpreter arrives as `{ FS, callMain }`, which is the shape
- * emscripten produces for a `main()`-having program built with `-sINVOKE_RUN=0` and
- * `-sEXPORTED_RUNTIME_METHODS=callMain,FS`. See ADVANCED_USAGE.md for what that means per language.
- */
 
 /**
  * Where the interpreter's stdout and stderr go while it runs.

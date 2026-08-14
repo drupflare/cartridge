@@ -1,6 +1,3 @@
-import { MountError } from './errors';
-import { toBytes, toUtf8 } from './util';
-
 /**
  * Mounts the packed Drupal tree into a php-wasm MEMFS.
  *
@@ -11,6 +8,9 @@ import { toBytes, toUtf8 } from './util';
  * CONVERTED FROM JAVASCRIPT, the same way `src/runtime/serialize.ts` was: importers keep the
  * `./mount.js` specifier because the bundler resolves it to this file, so no call site changed.
  */
+
+import { MountError } from './errors';
+import { toBytes, toUtf8 } from './util';
 
 /**
  * The MEMFS calls a mount makes; emscripten's FS is far wider than this.

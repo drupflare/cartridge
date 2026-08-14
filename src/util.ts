@@ -1,17 +1,14 @@
-import { CartridgeError } from './errors';
-
 /**
- * Byte and string conveniences, so no caller of this package ever builds a `TextEncoder`.
+ * Byte and string conveniences, so no caller of this package builds a `TextEncoder`.
  *
- * WHY THESE ARE A MODULE AND NOT INLINE. Every seam here moves bytes: a script written into MEMFS,
- * stdout collected out of an emscripten `print`, a pack member inflated from a blob. Each one has a
- * string form that is what a caller actually has, and a bytes form that is what the interpreter
- * actually takes. Making each API accept both and hand back both is the whole ergonomics rule; these
- * are the four functions that let it do that without repeating an encoder in seven files.
+ * Every seam here moves bytes, and each has a string form the caller has and a bytes form the
+ * interpreter takes. These let both be accepted without repeating an encoder in seven files.
  *
  * The naming is fixed on purpose: `to*`/`from*` for codecs, `*Json` for serialise/parse. Learn it
  * once and the rest of the surface is guessable.
  */
+
+import { CartridgeError } from './errors';
 
 /** shared, because constructing one per call is measurable in a hot loop and buys nothing */
 const encoder = new TextEncoder();
