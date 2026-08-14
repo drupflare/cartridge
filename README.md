@@ -68,8 +68,9 @@ opcode counter happened to land, months later and under load.
 bun add @drupflare/cartridge
 ```
 
-One runtime dependency, `fflate`. A lazy mount inflates inside a synchronous `open()` from wasm,
-where `DecompressionStream` cannot be awaited.
+Two runtime dependencies, `fflate` and `fzstd`, both synchronous decompressors. A lazy mount
+inflates inside a synchronous `open()` from wasm and a pre-compressed interpreter inflates at module
+scope; neither point can await `DecompressionStream`, which is also limited to gzip and deflate.
 
 ---
 
