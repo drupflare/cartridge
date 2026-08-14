@@ -1,0 +1,28 @@
+{
+	"$schema": "https://typedoc.org/schema.json",
+	"entryPoints": [
+		"src/index.ts",
+		"src/cartridge.ts",
+		"src/errors.ts",
+		"src/fs.ts",
+		"src/serialize.ts",
+		"src/mask.ts",
+		"src/worker-shim.ts",
+		"src/supervisor.ts",
+		"src/tail-worker.ts",
+		"src/util.ts"
+	],
+	"out": "typedoc",
+	"name": "@drupflare/cartridge",
+	"readme": "README.md",
+	"projectDocuments": ["ADVANCED_USAGE.md"],
+	"includeVersion": true,
+	"excludeInternal": true,
+	"excludePrivate": true,
+	"validation": {
+		"notExported": true,
+		"invalidLink": true,
+		"notDocumented": true
+	},
+	"treatWarningsAsErrors": false
+}

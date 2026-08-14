@@ -35,7 +35,9 @@
 		"test:interpreters": "vitest run --project=interpreters",
 		"prettier": "prettier --write .",
 		"prettier:check": "prettier --check .",
-		"prepare": "husky"
+		"prepare": "husky",
+		"docs:build": "typedoc",
+		"docs:serve": "typedoc --watch"
 	},
 	"dependencies": {
 		"fflate": "^0.8.3"
@@ -55,6 +57,7 @@
 		"prettier-plugin-sh": "^0.19.0",
 		"pyodide": "^314.0.3",
 		"quickjs-emscripten": "^0.32.0",
+		"typedoc": "^0.28.20",
 		"typescript": "^5.9.3",
 		"vitest": "^4.1.0",
 		"wasmoon": "^1.16.0",

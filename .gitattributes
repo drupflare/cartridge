@@ -25,3 +25,7 @@
 /vitest.config.ts export-ignore
 /wrangler.jsonc export-ignore
 /CLAUDE.md export-ignore
+/typedoc export-ignore
+/typedoc/** export-ignore
+/typedoc.json export-ignore
+/typedoc.sh export-ignore

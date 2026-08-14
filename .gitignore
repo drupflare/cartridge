@@ -23,3 +23,6 @@ coverage/
 # editor and OS
 .idea/
 .DS_Store
+
+# typedoc output; built in CI and deployed to gh-pages, never committed to master
+typedoc/

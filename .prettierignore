@@ -4,3 +4,4 @@ coverage/
 .wrangler/
 bun.lock
 .husky/
+typedoc/
