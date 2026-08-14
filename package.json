@@ -60,7 +60,7 @@
 		"pyodide": "^314.0.3",
 		"quickjs-emscripten": "^0.32.0",
 		"typedoc": "^0.28.20",
-		"typescript": "^5.9.3",
+		"typescript": "^7.0.0",
 		"vitest": "^4.1.0",
 		"wasmoon": "^1.16.0",
 		"wrangler": "^4.20.0"
