@@ -1,0 +1,639 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>ADVANCED_USAGE | @drupflare/cartridge - v0.1.0</title><meta name="description" content="Documentation for @drupflare/cartridge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="../index.html" class="title">@drupflare/cartridge - v0.1.0</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<ul class="tsd-breadcrumb" aria-label="Breadcrumb">
+<li><a href="" aria-current="page">ADVANCED_USAGE</a></li></ul></div>
+<div class="tsd-panel tsd-typography"><h1 id="advanced-usage" class="tsd-anchor-link">Advanced Usage<a href="#advanced-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1>
+<p>Recipes for driving a wasm interpreter through <code>createCartridge()</code>, and the status of every language
+this document names.</p>
+<h2 id="language-status" class="tsd-anchor-link">Language Status<a href="#language-status" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>A language is <strong>Verified</strong> when a test in <a href="../media/interpreters"><code>tests/interpreters/</code></a> installs a
+real build from npm, drives it through this package, and passes. Everything else is <strong>Not verified</strong>.
+There is no third state. Run the lane with <code>bun run test:interpreters</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Language</th>
+<th>Adapter</th>
+<th>Status</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PHP 8.3, php-wasm 0.1.0</td>
+<td>yes</td>
+<td><strong>Verified</strong></td>
+<td>supplies <code>callMain</code> and a line split; 182 MB installed, one 12.6 MB wasm read</td>
+</tr>
+<tr>
+<td>Lua 5.4, wasmoon 1.16.0</td>
+<td>yes</td>
+<td><strong>Verified</strong></td>
+<td>supplies <code>callMain</code>; the build's emscripten <code>FS</code> has no <code>utime</code></td>
+</tr>
+<tr>
+<td>CPython 3, Pyodide 314.0.3</td>
+<td>yes</td>
+<td><strong>Verified</strong></td>
+<td>supplies <code>callMain</code>; 9.6 MB wasm plus a 2.5 MB stdlib zip</td>
+</tr>
+<tr>
+<td>QuickJS, quickjs-emscripten 0.32.0</td>
+<td>yes</td>
+<td><strong>Verified</strong></td>
+<td>supplies both members; the build exports no filesystem</td>
+</tr>
+<tr>
+<td>CRuby 3.4, ruby.wasm 2.10.1</td>
+<td>yes</td>
+<td><strong>Verified</strong></td>
+<td>supplies both members; the filesystem is a WASI preopen, not emscripten</td>
+</tr>
+<tr>
+<td>PHP 8.3, <code>drupflare/worker</code></td>
+<td>no</td>
+<td><strong>Not verified</strong></td>
+<td>a second build: exports <code>callMain</code> and <code>FS</code>, serves Drupal 11 on a deployed Worker</td>
+</tr>
+<tr>
+<td>Java</td>
+<td>yes</td>
+<td><strong>Not verified</strong></td>
+<td>no Java-on-wasm runtime is published to npm; see <a href="#java">Java</a></td>
+</tr>
+</tbody>
+</table>
+<p>Verified says the build satisfies <code>{ FS, callMain }</code>, that a script <code>cartridge.run()</code> wrote lands in
+the filesystem the interpreter reads, and that output comes back off <code>print</code>. It says nothing about
+whether that build fits a Worker. Pyodide's wasm alone is 9.6 MB against a 3 MB gzipped bundle
+ceiling, CRuby's is 30 MB and php-wasm's PHP 8.3 is 12.6 MB. Each recipe states its own size and
+runtime limits.</p>
+<p>PHP holds two rows because two different builds exist. php-wasm 0.1.0 is the published one this lane
+drives; the one in <a href="https://github.com/drupflare/worker"><code>drupflare/worker</code></a> is compiled separately,
+exports <code>callMain</code> and <code>FS</code> directly, and runs on the edge. Neither is evidence for the other.</p>
+<p>Two languages are absent from the table with nothing to install: <code>webperl</code>, <code>bash-wasm</code>,
+<code>wasm-bash</code> and <code>busybox-wasm</code> are all 404 on npm, so Perl and bash have no candidate build.</p>
+<p>Every recipe's adapter shape is also exercised over stand-in modules in
+<a href="../media/recipes.spec.ts"><code>tests/recipes.spec.ts</code></a>, in the workerd lane.</p>
+<hr>
+<h2 id="contents" class="tsd-anchor-link">Contents<a href="#contents" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<ul>
+<li><a href="#the-interpreter-contract">The Interpreter Contract</a></li>
+<li><a href="#php-83">PHP 8.3</a></li>
+<li><a href="#the-edge-php-build">The Edge PHP Build</a></li>
+<li><a href="#cpython-3">CPython 3</a></li>
+<li><a href="#lua-54">Lua 5.4</a></li>
+<li><a href="#quickjs">QuickJS</a></li>
+<li><a href="#cruby-34">CRuby 3.4</a></li>
+<li><a href="#java">Java</a></li>
+<li><a href="#structured-input-and-output">Structured Input and Output</a></li>
+<li><a href="#interpreter-flags-and-argv">Interpreter Flags and Argv</a></li>
+<li><a href="#a-nonzero-exit">A Nonzero Exit</a></li>
+<li><a href="#two-interpreters-in-one-isolate">Two Interpreters in One Isolate</a></li>
+<li><a href="#a-big-tree-mounted-lazily">A Big Tree, Mounted Lazily</a></li>
+<li><a href="#a-mutable-layer-in-r2">A Mutable Layer in R2</a></li>
+<li><a href="#inside-a-durable-object">Inside a Durable Object</a></li>
+<li><a href="#the-supervisor-on-the-response-path">The Supervisor on the Response Path</a></li>
+<li><a href="#the-tail-worker">The Tail Worker</a></li>
+<li><a href="#driving-the-pieces-by-hand">Driving the Pieces by Hand</a></li>
+<li><a href="#the-verification-lanes">The Verification Lanes</a></li>
+<li><a href="#things-that-will-bite-you">Things That Will Bite You</a></li>
+</ul>
+<hr>
+<h2 id="the-interpreter-contract" class="tsd-anchor-link">The Interpreter Contract<a href="#the-interpreter-contract" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>Two members.</p>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-3">type</span><span class="hl-1"> { </span><span class="hl-4">Interpreter</span><span class="hl-1">, </span><span class="hl-4">InterpreterIo</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">// FS: a filesystem object, narrowed to mkdir / writeFile / optional utime</span><br/><span class="hl-7">// callMain: runs the script at the end of argv and returns its exit status</span>
+</code><button type="button">Copy</button></pre>
+
+<p>For a <code>main()</code>-having program, emscripten produces both with:</p>
+<ul>
+<li><code>-sINVOKE_RUN=0</code>, so instantiating the module does not run <code>main</code>. Without it the program runs
+once at instantiation, before any script has been written, and <code>callMain</code> runs it again.</li>
+<li><code>-sEXPORTED_RUNTIME_METHODS=callMain,FS</code>, so the two members survive minification.</li>
+<li><code>-sMODULARIZE=1</code>, so you get a factory to call inside <code>instantiate</code>.</li>
+</ul>
+<div class="tsd-alert tsd-alert-important"><div class="tsd-alert-title"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><use href="../assets/icons.svg#icon-alertImportant"></use></svg><span>Important</span></div><p>
+<strong>No off-the-shelf build in this document exports <code>callMain</code>.</strong> Five were installed and checked:</p>
+<table>
+<thead>
+<tr>
+<th>Build</th>
+<th><code>FS</code></th>
+<th><code>callMain</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>wasmoon 1.16.0 (Lua 5.4)</td>
+<td>real emscripten, no <code>utime</code></td>
+<td>not exported</td>
+</tr>
+<tr>
+<td>Pyodide 314.0.3 (CPython 3)</td>
+<td>real emscripten, complete</td>
+<td>not exported</td>
+</tr>
+<tr>
+<td>quickjs-emscripten 0.32.0</td>
+<td>none at all</td>
+<td>not exported</td>
+</tr>
+<tr>
+<td>ruby.wasm 2.10.1 (CRuby)</td>
+<td>WASI preopen, no emscripten</td>
+<td>not exported</td>
+</tr>
+<tr>
+<td>php-wasm 0.1.0 (PHP 8.3)</td>
+<td>real emscripten, complete</td>
+<td>not exported</td>
+</tr>
+</tbody>
+</table>
+<p>PHP 8.3 in <code>drupflare/worker</code> exports it, that build having been made with the flag above; the
+published PHP does not. The <code>main()</code> recipe is the exception among published builds and the two-line
+<code>callMain</code> adapter is the normal case. <code>Interpreter.callMain</code> is typed as a function you supply for
+that reason, and <code>MountFS.utime</code> is optional for the same one.</p>
+<p><strong>Reading an unexported member can throw rather than answer <code>undefined</code>.</strong> emscripten replaces one
+with a getter that calls <code>abort()</code>, so <code>typeof module.callMain</code> on wasmoon's raw module raises
+<code>RuntimeError: Aborted('callMain' was not exported...)</code>. <code>createCartridge()</code> guards that read and
+reports <code>interpreter.no_entry_point</code> naming the member.</p>
+</div>
+<p><code>MountFS</code> is three method signatures rather than a reference to emscripten's object, so a filesystem
+that is not emscripten's still satisfies it. <a href="#cruby-34">CRuby 3.4</a> mounts through a WASI preopen
+directory in ten lines, and <code>createMemoryFS()</code> covers a build with no filesystem at all.</p>
+<p>Two workerd facts about instantiation:</p>
+<ul>
+<li><strong>workerd blocks request-time wasm codegen.</strong> <code>new WebAssembly.Module(bytes)</code> inside a request
+throws. The binary has to be a module-scope import the runtime compiles at deploy time, handed to
+emscripten through <code>instantiateWasm</code>.</li>
+<li><strong>The <code>ENVIRONMENT=worker</code> build reads <code>self.location.href</code> at module scope.</strong> workerd has <code>self</code>
+and no <code>self.location</code>, so the glue throws before instantiation. Import
+<code>@drupflare/cartridge/shim</code> first, for its effect, before the glue evaluates.</li>
+</ul>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge/shim&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">createCartridge</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-4">wasmModule</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;./interpreter.wasm&#39;</span><span class="hl-1">; </span><span class="hl-7">// compiled at deploy time, not per request</span><br/><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-4">initInterpreter</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;./interpreter.mjs&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">cartridge</span><span class="hl-1"> = </span><span class="hl-0">createCartridge</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">instantiate</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">io</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><br/><span class="hl-1">    </span><span class="hl-0">initInterpreter</span><span class="hl-1">({</span><br/><span class="hl-1">      </span><span class="hl-4">print:</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-4">print</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">printErr:</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-4">printErr</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-0">instantiateWasm</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">imports</span><span class="hl-1">, </span><span class="hl-4">done</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><br/><span class="hl-1">        </span><span class="hl-4">WebAssembly</span><span class="hl-1">.</span><span class="hl-0">instantiate</span><span class="hl-1">(</span><span class="hl-4">wasmModule</span><span class="hl-1">, </span><span class="hl-4">imports</span><span class="hl-1">).</span><span class="hl-0">then</span><span class="hl-1">((</span><span class="hl-4">instance</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-0">done</span><span class="hl-1">(</span><span class="hl-4">instance</span><span class="hl-1">, </span><span class="hl-4">wasmModule</span><span class="hl-1">))</span><br/><span class="hl-1">    })</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<h2 id="php-83" class="tsd-anchor-link">PHP 8.3<a href="#php-83" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><strong>Verified</strong> against php-wasm 0.1.0. The code below is what
+<a href="../media/real-builds.spec.ts"><code>tests/interpreters/real-builds.spec.ts</code></a> runs.</p>
+<p>php-wasm exports a complete emscripten <code>FS</code>, <code>utime</code> included, and no <code>callMain</code>. The entry point is
+<code>pib_run</code>, which compiles a PHP source string, so the adapter passes it a <code>require</code> of the path
+<code>cartridge.run()</code> wrote and PHP opens the file out of its own filesystem.</p>
+<p>The package is <strong>182 MB installed</strong> and ships twelve wasm builds, one per PHP version and
+environment. Naming a <code>version</code> picks one glue module, which reads one wasm: 12.6 MB for 8.3. There
+is no smaller sub-package to install instead.</p>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">createCartridge</span><span class="hl-1">, </span><span class="hl-3">type</span><span class="hl-1"> </span><span class="hl-4">Interpreter</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">PhpNode</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;php-wasm/PhpNode&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">// `embed` ignores `display_errors = stderr`, so a fatal reaches printErr through the log</span><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">ini</span><span class="hl-1"> = </span><span class="hl-2">&#39;display_errors = 0</span><span class="hl-10">\n</span><span class="hl-2">log_errors = 1</span><span class="hl-10">\n</span><span class="hl-2">error_log = /dev/stderr</span><span class="hl-10">\n</span><span class="hl-2">error_reporting = E_ALL&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">php</span><span class="hl-1"> = </span><span class="hl-0">createCartridge</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">instantiate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">async</span><span class="hl-1"> (</span><span class="hl-4">io</span><span class="hl-1">): </span><span class="hl-8">Promise</span><span class="hl-1">&lt;</span><span class="hl-8">Interpreter</span><span class="hl-1">&gt; </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">runtime</span><span class="hl-1"> = </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">PhpNode</span><span class="hl-1">({ </span><span class="hl-4">version:</span><span class="hl-1"> </span><span class="hl-2">&#39;8.3&#39;</span><span class="hl-1">, </span><span class="hl-4">ini</span><span class="hl-1"> });</span><br/><span class="hl-1">    </span><span class="hl-7">// php-wasm buffers stdout bytes and fires one event per newline, newline attached</span><br/><span class="hl-1">    </span><span class="hl-4">runtime</span><span class="hl-1">.</span><span class="hl-0">onoutput</span><span class="hl-1"> = (</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-0">print</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">detail</span><span class="hl-1">[</span><span class="hl-9">0</span><span class="hl-1">].</span><span class="hl-0">replace</span><span class="hl-1">(</span><span class="hl-11">/\n</span><span class="hl-12">$</span><span class="hl-11">/</span><span class="hl-1">, </span><span class="hl-2">&#39;&#39;</span><span class="hl-1">));</span><br/><span class="hl-1">    </span><span class="hl-4">runtime</span><span class="hl-1">.</span><span class="hl-0">onerror</span><span class="hl-1"> = (</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-0">printErr</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">detail</span><span class="hl-1">[</span><span class="hl-9">0</span><span class="hl-1">].</span><span class="hl-0">replace</span><span class="hl-1">(</span><span class="hl-11">/\n</span><span class="hl-12">$</span><span class="hl-11">/</span><span class="hl-1">, </span><span class="hl-2">&#39;&#39;</span><span class="hl-1">));</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">module</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">runtime</span><span class="hl-1">.</span><span class="hl-4">binary</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">FS:</span><span class="hl-1"> </span><span class="hl-8">module</span><span class="hl-1">.</span><span class="hl-6">FS</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-0">callMain</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">argv</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">path</span><span class="hl-1"> = </span><span class="hl-4">argv</span><span class="hl-1">[</span><span class="hl-4">argv</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> - </span><span class="hl-9">1</span><span class="hl-1">];</span><br/><span class="hl-1">        </span><span class="hl-3">try</span><span class="hl-1"> {</span><br/><span class="hl-1">          </span><span class="hl-7">// pib_run compiles its argument as PHP, so `?&gt;` opens output mode first</span><br/><span class="hl-1">          </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-8">module</span><span class="hl-1">.</span><span class="hl-0">ccall</span><span class="hl-1">(</span><span class="hl-2">&#39;pib_run&#39;</span><span class="hl-1">, </span><span class="hl-2">&#39;number&#39;</span><span class="hl-1">, [</span><span class="hl-2">&#39;string&#39;</span><span class="hl-1">], [</span><span class="hl-2">`?&gt;&lt;?php require &quot;</span><span class="hl-5">${</span><span class="hl-4">path</span><span class="hl-5">}</span><span class="hl-2">&quot;;`</span><span class="hl-1">]);</span><br/><span class="hl-1">        } </span><span class="hl-3">finally</span><span class="hl-1"> {</span><br/><span class="hl-1">          </span><span class="hl-4">runtime</span><span class="hl-1">.</span><span class="hl-0">flush</span><span class="hl-1">();</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    };</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-4">scriptName:</span><span class="hl-1"> </span><span class="hl-2">&#39;main.php&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">argv</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">path</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> [</span><span class="hl-2">&#39;php&#39;</span><span class="hl-1">, </span><span class="hl-4">path</span><span class="hl-1">]</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">php</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&#39;&lt;?php echo json_encode([&quot;v&quot; =&gt; PHP_VERSION]);&#39;</span><span class="hl-1">);</span><br/><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-0">json</span><span class="hl-1">&lt;{ </span><span class="hl-4">v</span><span class="hl-1">: </span><span class="hl-8">string</span><span class="hl-1"> }&gt;().</span><span class="hl-4">v</span><span class="hl-1">; </span><span class="hl-7">// &quot;8.3.11&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Three things this build needs that the other four do not.</p>
+<p><code>flush()</code> after every run. A last line with no trailing newline stays in the byte buffer and
+arrives glued to the front of the next run's first line, so <code>result.json()</code> on run two parses run
+one's tail.</p>
+<p><code>error_log = /dev/stderr</code>. <code>display_errors = stderr</code> is a CLI-SAPI setting and this build is
+<code>embed</code>. Left at <code>display_errors = 1</code>, an uncaught <code>RuntimeException</code> writes six lines to <code>print</code>
+and <code>result.stdoutText</code> is no longer the script's output. Routed through the log, a fatal is
+<code>status === 2</code> with stdout empty.</p>
+<p><code>exit()</code> ends the runtime rather than the run. After <code>&lt;?php exit(3);</code> the status is still 0 and
+every later run through the same instance produces nothing.</p>
+<hr>
+<h2 id="the-edge-php-build" class="tsd-anchor-link">The Edge PHP Build<a href="#the-edge-php-build" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><strong>Not verified.</strong> A separate build, compiled by
+<a href="https://github.com/drupflare/phasm"><code>drupflare/phasm</code></a> and running in
+<a href="https://github.com/drupflare/worker"><code>drupflare/worker</code></a>, serving Drupal 11 out of a Durable Object
+on a deployed Worker. It exports <code>{ FS, callMain }</code> directly, so it is the one build here that needs
+no adapter, and nothing in this repository drives it.</p>
+<pre><code class="ts"><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">php</span><span class="hl-1"> = </span><span class="hl-0">createCartridge</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">instantiate</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">io</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-0">initPhp</span><span class="hl-1">({ </span><span class="hl-4">print:</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-4">print</span><span class="hl-1">, </span><span class="hl-4">printErr:</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-4">printErr</span><span class="hl-1">, </span><span class="hl-4">instantiateWasm</span><span class="hl-1"> }),</span><br/><span class="hl-1">  </span><span class="hl-4">scriptName:</span><span class="hl-1"> </span><span class="hl-2">&#39;main.php&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">argv</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">path</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> [</span><span class="hl-2">&#39;php&#39;</span><span class="hl-1">, </span><span class="hl-4">path</span><span class="hl-1">]</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">php</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&#39;&lt;?php echo json_encode([&quot;v&quot; =&gt; PHP_VERSION]);&#39;</span><span class="hl-1">);</span><br/><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-0">json</span><span class="hl-1">&lt;{ </span><span class="hl-4">v</span><span class="hl-1">: </span><span class="hl-8">string</span><span class="hl-1"> }&gt;().</span><span class="hl-4">v</span><span class="hl-1">; </span><span class="hl-7">// &quot;8.3.x&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Build flags that are load-bearing:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-sASYNCIFY=0</code></td>
+<td>Asyncify cost 42% of the bundle and bought nothing once the database was synchronous DO SQLite. Removing it fit a 3 MB gzipped ceiling</td>
+</tr>
+<tr>
+<td><code>-sJSPI</code> <strong>and</strong> <code>-sSUPPORT_LONGJMP=wasm</code></td>
+<td>plain <code>-sJSPI</code> makes every run die, including <code>&lt;?php echo PHP_VERSION;</code>, with <code>SuspendError: trying to suspend JS frames</code>: <code>pib_run</code> opens a <code>zend_try</code> (setjmp) before entering the VM, so an <code>invoke_*</code> JS frame sits under it</td>
+</tr>
+<tr>
+<td><code>-sSUPPORT_LONGJMP=wasm</code> is compile-time</td>
+<td>relinking an LTO object built without it aborts <code>wasm-ld</code> with <code>LLVM ERROR: Cannot select: ... catchret</code>, so a finished build cannot be converted after the fact</td>
+</tr>
+<tr>
+<td><code>ENVIRONMENT=worker</code></td>
+<td>a smaller shim surface than the browser build: no document, no window, no screen</td>
+</tr>
+<tr>
+<td>a <code>zend_interrupt_function</code> patch</td>
+<td>what <code>mask.ts</code> drives; exports <code>zend_wasm_slice_arm/_mask/_stat</code> at +0.45% (paired interleaved, n=200000)</td>
+</tr>
+</tbody>
+</table>
+<div class="tsd-alert tsd-alert-caution"><div class="tsd-alert-title"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><use href="../assets/icons.svg#icon-alertCaution"></use></svg><span>Caution</span></div><p>
+<strong><code>ASYNCIFY=0</code> leaves the <code>http</code> and <code>https</code> stream wrappers advertised and broken.</strong>
+<code>stream_get_wrappers()</code> still lists them, and reading through the native wrapper throws
+<code>ReferenceError: Asyncify is not defined</code> out of a wasm import: the glue has two
+<code>Asyncify.handleAsync(...)</code> call sites and declares <code>Asyncify</code> nowhere. PHP cannot catch it. <code>@</code>
+and <code>catch (\Throwable)</code> were both measured useless from two unrelated routes, and the whole
+invocation dies with no PHP fatal, no <code>printErr</code> and no logger output. Import
+<code>@drupflare/cartridge/shim</code>, which stubs the object and returns <code>-1</code> rather than <code>0</code> (<code>0</code> is taken
+as a valid stream handle one layer further in), and shadow both schemes from PHP with
+<a href="https://github.com/drupflare/stream-http"><code>drupflare/stream-http</code></a>.</p>
+</div>
+<hr>
+<h2 id="cpython-3" class="tsd-anchor-link">CPython 3<a href="#cpython-3" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><strong>Verified</strong> against Pyodide 314.0.3. The code below is what
+<a href="../media/real-builds.spec.ts"><code>tests/interpreters/real-builds.spec.ts</code></a> runs.</p>
+<p>Pyodide exports a complete emscripten <code>FS</code>, <code>utime</code> included, and no <code>callMain</code>
+(<code>pyodide._module.callMain</code> is <code>undefined</code>). The script <code>cartridge.run()</code> writes goes into CPython's
+own filesystem and <code>runpy</code> opens it there.</p>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">createCartridge</span><span class="hl-1">, </span><span class="hl-3">type</span><span class="hl-1"> </span><span class="hl-4">Interpreter</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">loadPyodide</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;pyodide&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">python</span><span class="hl-1"> = </span><span class="hl-0">createCartridge</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">instantiate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">async</span><span class="hl-1"> (</span><span class="hl-4">io</span><span class="hl-1">): </span><span class="hl-8">Promise</span><span class="hl-1">&lt;</span><span class="hl-8">Interpreter</span><span class="hl-1">&gt; </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">py</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">loadPyodide</span><span class="hl-1">({ </span><span class="hl-4">stdout:</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-4">print</span><span class="hl-1">, </span><span class="hl-4">stderr:</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-4">printErr</span><span class="hl-1"> });</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">FS:</span><span class="hl-1"> </span><span class="hl-4">py</span><span class="hl-1">.</span><span class="hl-6">FS</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-0">callMain</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">argv</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">path</span><span class="hl-1"> = </span><span class="hl-4">argv</span><span class="hl-1">[</span><span class="hl-4">argv</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> - </span><span class="hl-9">1</span><span class="hl-1">] ?? </span><span class="hl-2">&#39;&#39;</span><span class="hl-1">;</span><br/><span class="hl-1">        </span><span class="hl-4">py</span><span class="hl-1">.</span><span class="hl-0">runPython</span><span class="hl-1">(</span><span class="hl-2">`import runpy; runpy.run_path(</span><span class="hl-5">${</span><span class="hl-6">JSON</span><span class="hl-13">.</span><span class="hl-0">stringify</span><span class="hl-13">(</span><span class="hl-4">path</span><span class="hl-13">)</span><span class="hl-5">}</span><span class="hl-2">, run_name=&#39;__main__&#39;)`</span><span class="hl-1">);</span><br/><span class="hl-1">        </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-9">0</span><span class="hl-1">;</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    };</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-4">scriptName:</span><span class="hl-1"> </span><span class="hl-2">&#39;main.py&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">argv</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">path</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> [</span><span class="hl-2">&#39;python&#39;</span><span class="hl-1">, </span><span class="hl-4">path</span><span class="hl-1">],</span><br/><span class="hl-1">  </span><span class="hl-4">files:</span><span class="hl-1"> { </span><span class="hl-2">&#39;helper.py&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-2">&#39;def double(n):</span><span class="hl-10">\n\t</span><span class="hl-2">return n * 2</span><span class="hl-10">\n</span><span class="hl-2">&#39;</span><span class="hl-1"> }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">python</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-2">&#39;import json, sys</span><span class="hl-10">\n</span><span class="hl-2">print(json.dumps({&quot;major&quot;: sys.version_info[0]}))&#39;</span><br/><span class="hl-1">);</span><br/><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-0">json</span><span class="hl-1">&lt;{ </span><span class="hl-4">major</span><span class="hl-1">: </span><span class="hl-8">number</span><span class="hl-1"> }&gt;().</span><span class="hl-4">major</span><span class="hl-1">; </span><span class="hl-7">// 3</span>
+</code><button type="button">Copy</button></pre>
+
+<div class="tsd-alert tsd-alert-caution"><div class="tsd-alert-title"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><use href="../assets/icons.svg#icon-alertCaution"></use></svg><span>Caution</span></div><p>
+<strong>This does not fit a Worker, for size rather than interface.</strong> Pyodide ships a 9.6 MB
+<code>pyodide.asm.wasm</code> plus a 2.5 MB stdlib zip against a 3 MB gzipped ceiling, and reads both off the
+local filesystem at load time, which workerd does not have. The verification runs under node.</p>
+</div>
+<p>For Python on the edge, two routes remain, both Not verified:</p>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Shape</th>
+<th>Open question</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CPython built to wasm32-emscripten</td>
+<td>upstream supports the target</td>
+<td>the flag set that yields <code>callMain</code> + <code>FS</code> under workerd, and the size with a trimmed stdlib</td>
+</tr>
+<tr>
+<td>CPython on WASI</td>
+<td><code>wasi</code> rather than emscripten</td>
+<td>a WASI preopen needs a <code>MountFS</code> adapter; <a href="#cruby-34">CRuby 3.4</a> is the worked example of that shape</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="lua-54" class="tsd-anchor-link">Lua 5.4<a href="#lua-54" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><strong>Verified</strong> against wasmoon 1.16.0.</p>
+<p>wasmoon exposes a real emscripten MEMFS, so <code>cartridge.run()</code> writes the script through it and Lua
+reads it back with <code>luaL_loadfilex</code>. Only <code>callMain</code> is host-side.</p>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">createCartridge</span><span class="hl-1">, </span><span class="hl-3">type</span><span class="hl-1"> </span><span class="hl-4">Interpreter</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">LuaFactory</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;wasmoon&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">lua</span><span class="hl-1"> = </span><span class="hl-0">createCartridge</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">instantiate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">async</span><span class="hl-1"> (</span><span class="hl-4">io</span><span class="hl-1">): </span><span class="hl-8">Promise</span><span class="hl-1">&lt;</span><span class="hl-8">Interpreter</span><span class="hl-1">&gt; </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">factory</span><span class="hl-1"> = </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">LuaFactory</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">wasm</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">factory</span><span class="hl-1">.</span><span class="hl-0">getLuaModule</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">engine</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">factory</span><span class="hl-1">.</span><span class="hl-0">createEngine</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-4">engine</span><span class="hl-1">.</span><span class="hl-4">global</span><span class="hl-1">.</span><span class="hl-0">set</span><span class="hl-1">(</span><span class="hl-2">&#39;print&#39;</span><span class="hl-1">, (...</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-8">unknown</span><span class="hl-1">[]) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-0">print</span><span class="hl-1">(</span><span class="hl-4">args</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">(</span><span class="hl-4">String</span><span class="hl-1">).</span><span class="hl-0">join</span><span class="hl-1">(</span><span class="hl-2">&#39;</span><span class="hl-10">\t</span><span class="hl-2">&#39;</span><span class="hl-1">)));</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">FS:</span><span class="hl-1"> </span><span class="hl-4">wasm</span><span class="hl-1">.</span><span class="hl-4">module</span><span class="hl-1">.</span><span class="hl-6">FS</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-0">callMain</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">argv</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-3">try</span><span class="hl-1"> {</span><br/><span class="hl-1">          </span><span class="hl-4">engine</span><span class="hl-1">.</span><span class="hl-0">doFileSync</span><span class="hl-1">(</span><span class="hl-4">argv</span><span class="hl-1">[</span><span class="hl-4">argv</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> - </span><span class="hl-9">1</span><span class="hl-1">] ?? </span><span class="hl-2">&#39;&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">          </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-9">0</span><span class="hl-1">;</span><br/><span class="hl-1">        } </span><span class="hl-3">catch</span><span class="hl-1"> (</span><span class="hl-4">cause</span><span class="hl-1">) {</span><br/><span class="hl-1">          </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-0">printErr</span><span class="hl-1">(</span><span class="hl-0">String</span><span class="hl-1">(</span><span class="hl-4">cause</span><span class="hl-1">));</span><br/><span class="hl-1">          </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-9">1</span><span class="hl-1">;</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    };</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-4">scriptName:</span><span class="hl-1"> </span><span class="hl-2">&#39;main.lua&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">argv</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">path</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> [</span><span class="hl-2">&#39;lua&#39;</span><span class="hl-1">, </span><span class="hl-4">path</span><span class="hl-1">]</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-1">(</span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">lua</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&#39;print(&quot;lua &quot; .. _VERSION)&#39;</span><span class="hl-1">)).</span><span class="hl-0">firstLine</span><span class="hl-1">(); </span><span class="hl-7">// &quot;lua Lua 5.4&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<div class="tsd-alert tsd-alert-note"><div class="tsd-alert-title"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><use href="../assets/icons.svg#icon-alertNote"></use></svg><span>Note</span></div><p>
+<strong>wasmoon's <code>FS</code> has no <code>utime</code>.</strong> <code>MountFS.utime</code> is optional for that reason, and only
+<code>mountDrupalStreaming()</code> ever calls it.</p>
+</div>
+<hr>
+<h2 id="quickjs" class="tsd-anchor-link">QuickJS<a href="#quickjs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><strong>Verified</strong> against quickjs-emscripten 0.32.0.</p>
+<p>quickjs-emscripten trims its exported runtime methods to <code>cwrap</code>, <code>UTF8ToString</code> and the heap views,
+so there is no <code>FS</code> and no <code>callMain</code>. Both halves are host-side, and <code>createMemoryFS()</code> is the
+filesystem half. The wasm engine still parses and executes the script, and <code>print</code> inside it is a
+host function calling back through the mask.</p>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">createCartridge</span><span class="hl-1">, </span><span class="hl-4">createMemoryFS</span><span class="hl-1">, </span><span class="hl-3">type</span><span class="hl-1"> </span><span class="hl-4">Interpreter</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">getQuickJS</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;quickjs-emscripten&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">files</span><span class="hl-1"> = </span><span class="hl-0">createMemoryFS</span><span class="hl-1">();</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">qjs</span><span class="hl-1"> = </span><span class="hl-0">createCartridge</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">instantiate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">async</span><span class="hl-1"> (</span><span class="hl-4">io</span><span class="hl-1">): </span><span class="hl-8">Promise</span><span class="hl-1">&lt;</span><span class="hl-8">Interpreter</span><span class="hl-1">&gt; </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">QuickJS</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getQuickJS</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">FS:</span><span class="hl-1"> </span><span class="hl-4">files</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-0">callMain</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">argv</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">ctx</span><span class="hl-1"> = </span><span class="hl-4">QuickJS</span><span class="hl-1">.</span><span class="hl-0">newContext</span><span class="hl-1">();</span><br/><span class="hl-1">        </span><span class="hl-3">try</span><span class="hl-1"> {</span><br/><span class="hl-1">          </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">print</span><span class="hl-1"> = </span><span class="hl-4">ctx</span><span class="hl-1">.</span><span class="hl-0">newFunction</span><span class="hl-1">(</span><span class="hl-2">&#39;print&#39;</span><span class="hl-1">, (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><br/><span class="hl-1">            </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-0">print</span><span class="hl-1">(</span><span class="hl-4">args</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">((</span><span class="hl-4">arg</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-0">String</span><span class="hl-1">(</span><span class="hl-4">ctx</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-4">arg</span><span class="hl-1">))).</span><span class="hl-0">join</span><span class="hl-1">(</span><span class="hl-2">&#39; &#39;</span><span class="hl-1">))</span><br/><span class="hl-1">          );</span><br/><span class="hl-1">          </span><span class="hl-4">ctx</span><span class="hl-1">.</span><span class="hl-0">setProp</span><span class="hl-1">(</span><span class="hl-4">ctx</span><span class="hl-1">.</span><span class="hl-4">global</span><span class="hl-1">, </span><span class="hl-2">&#39;print&#39;</span><span class="hl-1">, </span><span class="hl-4">print</span><span class="hl-1">);</span><br/><span class="hl-1">          </span><span class="hl-4">print</span><span class="hl-1">.</span><span class="hl-0">dispose</span><span class="hl-1">();</span><br/><span class="hl-1">          </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">evaluated</span><span class="hl-1"> = </span><span class="hl-4">ctx</span><span class="hl-1">.</span><span class="hl-0">evalCode</span><span class="hl-1">(</span><span class="hl-4">files</span><span class="hl-1">.</span><span class="hl-0">readText</span><span class="hl-1">(</span><span class="hl-4">argv</span><span class="hl-1">[</span><span class="hl-4">argv</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> - </span><span class="hl-9">1</span><span class="hl-1">] ?? </span><span class="hl-2">&#39;&#39;</span><span class="hl-1">) ?? </span><span class="hl-2">&#39;&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">          </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">evaluated</span><span class="hl-1">.</span><span class="hl-4">error</span><span class="hl-1">) {</span><br/><span class="hl-1">            </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-0">printErr</span><span class="hl-1">(</span><span class="hl-0">String</span><span class="hl-1">(</span><span class="hl-4">ctx</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-4">evaluated</span><span class="hl-1">.</span><span class="hl-4">error</span><span class="hl-1">)));</span><br/><span class="hl-1">            </span><span class="hl-4">evaluated</span><span class="hl-1">.</span><span class="hl-4">error</span><span class="hl-1">.</span><span class="hl-0">dispose</span><span class="hl-1">();</span><br/><span class="hl-1">            </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-9">1</span><span class="hl-1">;</span><br/><span class="hl-1">          }</span><br/><span class="hl-1">          </span><span class="hl-4">evaluated</span><span class="hl-1">.</span><span class="hl-4">value</span><span class="hl-1">.</span><span class="hl-0">dispose</span><span class="hl-1">();</span><br/><span class="hl-1">          </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-9">0</span><span class="hl-1">;</span><br/><span class="hl-1">        } </span><span class="hl-3">finally</span><span class="hl-1"> {</span><br/><span class="hl-1">          </span><span class="hl-4">ctx</span><span class="hl-1">.</span><span class="hl-0">dispose</span><span class="hl-1">();</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    };</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-4">scriptName:</span><span class="hl-1"> </span><span class="hl-2">&#39;main.js&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">argv</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">path</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> [</span><span class="hl-2">&#39;qjs&#39;</span><span class="hl-1">, </span><span class="hl-4">path</span><span class="hl-1">]</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-1">(</span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">qjs</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&#39;print(&quot;qjs &quot; + (1 + 1));&#39;</span><span class="hl-1">)).</span><span class="hl-0">firstLine</span><span class="hl-1">(); </span><span class="hl-7">// &quot;qjs 2&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<h2 id="cruby-34" class="tsd-anchor-link">CRuby 3.4<a href="#cruby-34" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><strong>Verified</strong> against ruby.wasm 2.10.1 (<code>@ruby/wasm-wasi</code> plus the <code>@ruby/3.4-wasm-wasi</code> binary).</p>
+<p>CRuby is WASI rather than emscripten. <code>RubyVM</code> exposes neither <code>FS</code> nor <code>callMain</code>, so both halves
+are host-side, and the filesystem half is a <code>MountFS</code> over a <code>PreopenDirectory</code> from
+<code>@bjorn3/browser_wasi_shim</code>. <code>Kernel#load</code> and <code>File.read</code> inside a script resolve through that same
+directory, so the script is not handed to Ruby as a string.</p>
+<p>Use <code>ruby+stdlib.wasm</code>, 30 MB. The bare <code>ruby.wasm</code> boots and prints, then writes four
+&quot;were not loaded&quot; lines to stderr and cannot <code>require</code>.</p>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">ConsoleStdout</span><span class="hl-1">, </span><span class="hl-4">File</span><span class="hl-1">, </span><span class="hl-4">OpenFile</span><span class="hl-1">, </span><span class="hl-4">PreopenDirectory</span><span class="hl-1">, </span><span class="hl-4">WASI</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@bjorn3/browser_wasi_shim&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">createCartridge</span><span class="hl-1">, </span><span class="hl-3">type</span><span class="hl-1"> </span><span class="hl-4">Interpreter</span><span class="hl-1">, </span><span class="hl-3">type</span><span class="hl-1"> </span><span class="hl-4">MountFS</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">RubyVM</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@ruby/wasm-wasi&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">root</span><span class="hl-1"> = </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">PreopenDirectory</span><span class="hl-1">(</span><span class="hl-2">&#39;/&#39;</span><span class="hl-1">, </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">Map</span><span class="hl-1">());</span><br/><br/><span class="hl-7">// the filesystem half: a preopen&#39;s paths are relative to it, and cartridge writes absolute ones</span><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">files</span><span class="hl-1">: </span><span class="hl-8">MountFS</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-0">mkdir</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">path</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-5">void</span><span class="hl-1"> </span><span class="hl-4">root</span><span class="hl-1">.</span><span class="hl-4">dir</span><span class="hl-1">.</span><span class="hl-0">create_entry_for_path</span><span class="hl-1">(</span><span class="hl-4">path</span><span class="hl-1">.</span><span class="hl-0">replace</span><span class="hl-1">(</span><span class="hl-11">/</span><span class="hl-12">^</span><span class="hl-10">\/</span><span class="hl-14">+</span><span class="hl-11">/</span><span class="hl-1">, </span><span class="hl-2">&#39;&#39;</span><span class="hl-1">), </span><span class="hl-5">true</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">writeFile</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">path</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">made</span><span class="hl-1"> = </span><span class="hl-4">root</span><span class="hl-1">.</span><span class="hl-4">dir</span><span class="hl-1">.</span><span class="hl-0">create_entry_for_path</span><span class="hl-1">(</span><span class="hl-4">path</span><span class="hl-1">.</span><span class="hl-0">replace</span><span class="hl-1">(</span><span class="hl-11">/</span><span class="hl-12">^</span><span class="hl-10">\/</span><span class="hl-14">+</span><span class="hl-11">/</span><span class="hl-1">, </span><span class="hl-2">&#39;&#39;</span><span class="hl-1">), </span><span class="hl-5">false</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">made</span><span class="hl-1">.</span><span class="hl-4">ret</span><span class="hl-1"> !== </span><span class="hl-9">0</span><span class="hl-1"> || !</span><span class="hl-4">made</span><span class="hl-1">.</span><span class="hl-4">entry</span><span class="hl-1">) </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`wasi refused </span><span class="hl-5">${</span><span class="hl-4">path</span><span class="hl-5">}</span><span class="hl-2">: errno </span><span class="hl-5">${</span><span class="hl-4">made</span><span class="hl-13">.</span><span class="hl-4">ret</span><span class="hl-5">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">made</span><span class="hl-1">.</span><span class="hl-4">entry</span><span class="hl-1">.</span><span class="hl-4">data</span><span class="hl-1"> = </span><span class="hl-5">typeof</span><span class="hl-1"> </span><span class="hl-4">data</span><span class="hl-1"> === </span><span class="hl-2">&#39;string&#39;</span><span class="hl-1"> ? </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">TextEncoder</span><span class="hl-1">().</span><span class="hl-0">encode</span><span class="hl-1">(</span><span class="hl-4">data</span><span class="hl-1">) : </span><span class="hl-4">data</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">ruby</span><span class="hl-1"> = </span><span class="hl-0">createCartridge</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">instantiate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">async</span><span class="hl-1"> (</span><span class="hl-4">io</span><span class="hl-1">): </span><span class="hl-8">Promise</span><span class="hl-1">&lt;</span><span class="hl-8">Interpreter</span><span class="hl-1">&gt; </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">wasi</span><span class="hl-1"> = </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">WASI</span><span class="hl-1">(</span><br/><span class="hl-1">      [</span><span class="hl-2">&#39;ruby&#39;</span><span class="hl-1">],</span><br/><span class="hl-1">      [],</span><br/><span class="hl-1">      [</span><br/><span class="hl-1">        </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">OpenFile</span><span class="hl-1">(</span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">File</span><span class="hl-1">([])),</span><br/><span class="hl-1">        </span><span class="hl-4">ConsoleStdout</span><span class="hl-1">.</span><span class="hl-0">lineBuffered</span><span class="hl-1">(</span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-4">print</span><span class="hl-1">),</span><br/><span class="hl-1">        </span><span class="hl-4">ConsoleStdout</span><span class="hl-1">.</span><span class="hl-0">lineBuffered</span><span class="hl-1">(</span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-4">printErr</span><span class="hl-1">),</span><br/><span class="hl-1">        </span><span class="hl-4">root</span><br/><span class="hl-1">      ],</span><br/><span class="hl-1">      { </span><span class="hl-4">debug:</span><span class="hl-1"> </span><span class="hl-5">false</span><span class="hl-1"> }</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">module</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">WebAssembly</span><span class="hl-1">.</span><span class="hl-0">compile</span><span class="hl-1">(</span><span class="hl-4">rubyWasmBytes</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> { </span><span class="hl-6">vm</span><span class="hl-1"> } = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">RubyVM</span><span class="hl-1">.</span><span class="hl-0">instantiateModule</span><span class="hl-1">({ </span><span class="hl-4">module</span><span class="hl-1">, </span><span class="hl-4">wasip1:</span><span class="hl-1"> </span><span class="hl-4">wasi</span><span class="hl-1"> });</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">FS:</span><span class="hl-1"> </span><span class="hl-4">files</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-0">callMain</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">argv</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-3">try</span><span class="hl-1"> {</span><br/><span class="hl-1">          </span><span class="hl-4">vm</span><span class="hl-1">.</span><span class="hl-0">eval</span><span class="hl-1">(</span><span class="hl-2">`load </span><span class="hl-5">${</span><span class="hl-6">JSON</span><span class="hl-13">.</span><span class="hl-0">stringify</span><span class="hl-13">(</span><span class="hl-4">argv</span><span class="hl-13">[</span><span class="hl-4">argv</span><span class="hl-13">.</span><span class="hl-4">length</span><span class="hl-13"> </span><span class="hl-1">-</span><span class="hl-13"> </span><span class="hl-9">1</span><span class="hl-13">] </span><span class="hl-1">??</span><span class="hl-13"> </span><span class="hl-2">&#39;&#39;</span><span class="hl-13">)</span><span class="hl-5">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">          </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-9">0</span><span class="hl-1">;</span><br/><span class="hl-1">        } </span><span class="hl-3">catch</span><span class="hl-1"> (</span><span class="hl-4">cause</span><span class="hl-1">) {</span><br/><span class="hl-1">          </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-0">printErr</span><span class="hl-1">(</span><span class="hl-0">String</span><span class="hl-1">(</span><span class="hl-4">cause</span><span class="hl-1">));</span><br/><span class="hl-1">          </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-9">1</span><span class="hl-1">;</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    };</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-4">scriptName:</span><span class="hl-1"> </span><span class="hl-2">&#39;main.rb&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">argv</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">path</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> [</span><span class="hl-2">&#39;ruby&#39;</span><span class="hl-1">, </span><span class="hl-4">path</span><span class="hl-1">]</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-1">(</span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">ruby</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&#39;puts &quot;ruby #{RUBY_VERSION}&quot;&#39;</span><span class="hl-1">)).</span><span class="hl-0">firstLine</span><span class="hl-1">(); </span><span class="hl-7">// &quot;ruby 3.4.x&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><code>ConsoleStdout.lineBuffered</code> calls its function once per newline-terminated line, which is the
+contract emscripten's <code>print</code> has, so the mask records one enter per line either way.</p>
+<hr>
+<h2 id="java" class="tsd-anchor-link">Java<a href="#java" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><strong>Not verified.</strong> No published package ships a Java-on-wasm runtime this package could drive. The
+search is recorded so it can be re-run rather than repeated.</p>
+<table>
+<thead>
+<tr>
+<th>Looked for</th>
+<th>Found</th>
+<th>Why it cannot be driven</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>npm view teavm</code></td>
+<td>not published. <code>create-teavm-app</code> is a scaffolder; TeaVM itself is a Maven/Gradle compiler</td>
+<td>there is no runtime artifact to import. Output comes from a JDK build, and it is not emscripten</td>
+</tr>
+<tr>
+<td><code>npm view cheerpj</code>, <code>@leaningtech/*</code></td>
+<td>not published under either name</td>
+<td>CheerpJ loads its JVM from <code>cjrtnc.leaningtech.com</code> and targets a browser, so there is no local wasm</td>
+</tr>
+<tr>
+<td><code>npm view doppiojvm</code></td>
+<td>published, last release 2016-10-30</td>
+<td>a JVM in TypeScript, not wasm. No <code>FS</code>, no <code>callMain</code></td>
+</tr>
+<tr>
+<td>npm search <code>java-wasm</code>, <code>jvm-wasm</code></td>
+<td>tree-sitter grammars, PGP libraries, <code>workerd</code> itself</td>
+<td>nothing that runs Java</td>
+</tr>
+</tbody>
+</table>
+<p>Three routes remain:</p>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>What it is</th>
+<th>Adapter</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TeaVM (wasm-gc backend)</td>
+<td>Java compiled ahead of time to wasm</td>
+<td>no emscripten and no <code>FS</code>; supply <code>createMemoryFS()</code> or your own <code>MountFS</code></td>
+</tr>
+<tr>
+<td>CheerpJ</td>
+<td>a JVM in wasm, browser-oriented</td>
+<td>its entry point is its own loader API; library-style, like <a href="#quickjs">QuickJS</a></td>
+</tr>
+<tr>
+<td>a JVM built to wasm</td>
+<td>e.g. via an emscripten port</td>
+<td><code>{ FS, callMain }</code> could exist directly, and the size problem lives here</td>
+</tr>
+</tbody>
+</table>
+<p>With an emscripten <code>FS</code>, the <code>main()</code> recipe applies with
+<code>argv: (path) =&gt; ['java', '-cp', '/cartridge', 'Main']</code> and the class written by <code>files</code> rather than
+by <code>run()</code>.</p>
+<p><strong>Size is the blocker, not the interface.</strong> The free-tier ceiling <code>drupflare/worker</code> works against is
+3 MB gzipped for the whole bundle, and PHP 8.3 with a trimmed extension set lands at 2.87 MB of it.</p>
+<hr>
+<h2 id="structured-input-and-output" class="tsd-anchor-link">Structured Input and Output<a href="#structured-input-and-output" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><strong>Verified</strong> against Pyodide, CRuby and PHP. No <code>TextEncoder</code> or <code>TextDecoder</code> in caller code.</p>
+<pre><code class="ts"><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">cartridge</span><span class="hl-1">.</span><span class="hl-0">writeJson</span><span class="hl-1">(</span><span class="hl-2">&#39;input.json&#39;</span><span class="hl-1">, { </span><span class="hl-4">items:</span><span class="hl-1"> [</span><span class="hl-9">1</span><span class="hl-1">, </span><span class="hl-9">2</span><span class="hl-1">, </span><span class="hl-9">3</span><span class="hl-1">, </span><span class="hl-9">4</span><span class="hl-1">] });</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">cartridge</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">`</span><br/><span class="hl-2">	import json</span><br/><span class="hl-2">	with open(&#39;/cartridge/input.json&#39;) as f:</span><br/><span class="hl-2">		print(json.dumps({&#39;total&#39;: sum(json.load(f)[&#39;items&#39;])}))</span><br/><span class="hl-2">`</span><span class="hl-1">);</span><br/><br/><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-0">json</span><span class="hl-1">&lt;{ </span><span class="hl-4">total</span><span class="hl-1">: </span><span class="hl-8">number</span><span class="hl-1"> }&gt;().</span><span class="hl-4">total</span><span class="hl-1">; </span><span class="hl-7">// 10</span>
+</code><button type="button">Copy</button></pre>
+
+<p><code>writeJson</code> is <code>async</code> so an unencodable value (a cycle, a BigInt, <code>undefined</code>) arrives as a
+rejection. A declared-<code>Promise</code> function that throws synchronously slips past every <code>.catch()</code> a
+caller writes.</p>
+<hr>
+<h2 id="interpreter-flags-and-argv" class="tsd-anchor-link">Interpreter Flags and Argv<a href="#interpreter-flags-and-argv" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><code>php -f /path</code> and <code>python /path</code> differ only in argv, so <code>argv</code> is a function of the script path
+rather than a string template.</p>
+<pre><code class="ts"><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">cartridge</span><span class="hl-1"> = </span><span class="hl-0">createCartridge</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">instantiate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">scriptName:</span><span class="hl-1"> </span><span class="hl-2">&#39;main.php&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">argv</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">path</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> [</span><span class="hl-2">&#39;php&#39;</span><span class="hl-1">, </span><span class="hl-2">&#39;-d&#39;</span><span class="hl-1">, </span><span class="hl-2">&#39;memory_limit=64M&#39;</span><span class="hl-1">, </span><span class="hl-2">&#39;-f&#39;</span><span class="hl-1">, </span><span class="hl-4">path</span><span class="hl-1">]</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-7">// or per run, replacing the built argv entirely</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">cartridge</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&#39;&#39;</span><span class="hl-1">, { </span><span class="hl-4">argv:</span><span class="hl-1"> [</span><span class="hl-2">&#39;php&#39;</span><span class="hl-1">, </span><span class="hl-2">&#39;--version&#39;</span><span class="hl-1">] });</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<h2 id="a-nonzero-exit" class="tsd-anchor-link">A Nonzero Exit<a href="#a-nonzero-exit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>An intentional nonzero exit is not a malfunction, so <code>run()</code> resolves and puts the status on the
+result. <code>assertOk()</code> is the opt-in that turns it into an error.</p>
+<pre><code class="ts"><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">cartridge</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">script</span><span class="hl-1">);</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">status</span><span class="hl-1"> !== </span><span class="hl-9">0</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">error</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">stderrText</span><span class="hl-1">); </span><span class="hl-7">// decoded, and complete</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">// or, when a nonzero exit really is a failure</span><br/><span class="hl-1">(</span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">cartridge</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">script</span><span class="hl-1">)).</span><span class="hl-0">assertOk</span><span class="hl-1">();</span><br/><span class="hl-7">// InterpreterError: the interpreter exited 255 running /cartridge/main: Fatal error: ...</span>
+</code><button type="button">Copy</button></pre>
+
+<p>A wasm trap arrives as <code>InterpreterError</code> with code <code>interpreter.threw</code>;
+<code>RuntimeError: memory access out of bounds</code> is not an exit status.</p>
+<hr>
+<h2 id="two-interpreters-in-one-isolate" class="tsd-anchor-link">Two Interpreters in One Isolate<a href="#two-interpreters-in-one-isolate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="ts"><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">php</span><span class="hl-1"> = </span><span class="hl-0">createCartridge</span><span class="hl-1">({ </span><span class="hl-4">instantiate:</span><span class="hl-1"> </span><span class="hl-4">initPhp</span><span class="hl-1"> });</span><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">python</span><span class="hl-1"> = </span><span class="hl-0">createCartridge</span><span class="hl-1">({ </span><span class="hl-4">instantiate:</span><span class="hl-1"> </span><span class="hl-4">initPython</span><span class="hl-1"> });</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Each gets its own gate and its own mask. One interpreter has one C-side mask counter, and sharing the
+module-level singleton across two would make both host depths wrong. <code>createCartridge()</code> calls
+<code>createMask()</code>; the singleton stays exported for the single-interpreter case.</p>
+<hr>
+<h2 id="a-big-tree-mounted-lazily" class="tsd-anchor-link">A Big Tree, Mounted Lazily<a href="#a-big-tree-mounted-lazily" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>Reach for this when <code>mountRecord()</code> stops being sensible: a large tree where a request touches a
+small fraction of it.</p>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">mountDrupalLazy</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge/fs&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">cartridge</span><span class="hl-1"> = </span><span class="hl-0">createCartridge</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">instantiate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">async</span><span class="hl-1"> (</span><span class="hl-4">io</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">module</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">initInterpreter</span><span class="hl-1">({</span><br/><span class="hl-1">      </span><span class="hl-4">print:</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-4">print</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">printErr:</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-4">printErr</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">instantiateWasm</span><br/><span class="hl-1">    });</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">mountDrupalLazy</span><span class="hl-1">(</span><span class="hl-8">module</span><span class="hl-1">, </span><span class="hl-4">env</span><span class="hl-1">, { </span><span class="hl-4">prefix:</span><span class="hl-1"> </span><span class="hl-2">&#39;tree-pf&#39;</span><span class="hl-1"> });</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-8">module</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Against an 11,421-file Drupal tree in <code>drupflare/worker</code>: cold start was 3,754 ms of <code>cpuTime</code> and
+3,066 ms of that was the mount, 6.1x the local figure. Boot of the interpreter itself was 518-660 ms.
+Boot plus one page render read 1,006 of the 11,421 files.</p>
+<div class="tsd-alert tsd-alert-caution"><div class="tsd-alert-title"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><use href="../assets/icons.svg#icon-alertCaution"></use></svg><span>Caution</span></div><p>
+<strong>Do not convert the resident blob into range fetches.</strong> Holding all 11.4 MB in memory is the
+design: 1,006 files fetched individually is 1,006 subrequests against a 1,000-per-invocation cap,
+so the range-fetch version cannot serve a single page.</p>
+</div>
+<p><code>LAZY_FS_BUDGET_BYTES</code> (default 20 MB) is not optional. Without it a long-lived object converges on
+the union of every route it has ever served, ~52 MB against the streaming mount's 39 MB, since
+nothing is released. Eviction is safe: the compressed blob stays resident, so dropping
+contents is reversible and re-inflating is idempotent.</p>
+<hr>
+<h2 id="a-mutable-layer-in-r2" class="tsd-anchor-link">A Mutable Layer in R2<a href="#a-mutable-layer-in-r2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="ts"><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">mountDrupalLazy</span><span class="hl-1">(</span><span class="hl-8">module</span><span class="hl-1">, </span><span class="hl-4">env</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">layers:</span><span class="hl-1"> [</span><br/><span class="hl-1">    { </span><span class="hl-4">prefix:</span><span class="hl-1"> </span><span class="hl-2">&#39;core-pf&#39;</span><span class="hl-1">, </span><span class="hl-4">name:</span><span class="hl-1"> </span><span class="hl-2">&#39;core&#39;</span><span class="hl-1"> },</span><br/><span class="hl-1">    { </span><span class="hl-4">r2:</span><span class="hl-1"> </span><span class="hl-2">&#39;modules&#39;</span><span class="hl-1">, </span><span class="hl-4">name:</span><span class="hl-1"> </span><span class="hl-2">&#39;modules&#39;</span><span class="hl-1"> }</span><br/><span class="hl-1">  ]</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<ul>
+<li><strong>Layers merge before node creation</strong>, so a later layer overrides an earlier one on the same path.</li>
+<li><strong>An R2 layer costs zero subrequests.</strong> An ASSETS-backed layer costs two. R2 is the right store for
+the mutable half, and it removes the need for an API token with Workers Scripts edit rights: an
+install writes an object and bumps a generation instead of calling <code>versions.create</code>.</li>
+</ul>
+<hr>
+<h2 id="inside-a-durable-object" class="tsd-anchor-link">Inside a Durable Object<a href="#inside-a-durable-object" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">DurableObject</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;cloudflare:workers&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">createCartridge</span><span class="hl-1">, </span><span class="hl-3">type</span><span class="hl-1"> </span><span class="hl-4">Cartridge</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-5">class</span><span class="hl-1"> </span><span class="hl-8">InterpreterObject</span><span class="hl-1"> </span><span class="hl-5">extends</span><span class="hl-1"> </span><span class="hl-8">DurableObject</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">private</span><span class="hl-1"> </span><span class="hl-4">cartridge</span><span class="hl-1">: </span><span class="hl-8">Cartridge</span><span class="hl-1">;</span><br/><br/><span class="hl-1">  </span><span class="hl-5">constructor</span><span class="hl-1">(</span><span class="hl-4">ctx</span><span class="hl-1">: </span><span class="hl-8">DurableObjectState</span><span class="hl-1">, </span><span class="hl-4">env</span><span class="hl-1">: </span><span class="hl-8">Env</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">super</span><span class="hl-1">(</span><span class="hl-4">ctx</span><span class="hl-1">, </span><span class="hl-4">env</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">// passing ctx upgrades the gate: it also stops the runtime delivering events</span><br/><span class="hl-1">    </span><span class="hl-5">this</span><span class="hl-1">.</span><span class="hl-4">cartridge</span><span class="hl-1"> = </span><span class="hl-0">createCartridge</span><span class="hl-1">({ </span><span class="hl-4">instantiate:</span><span class="hl-1"> </span><span class="hl-0">makeInstantiate</span><span class="hl-1">(</span><span class="hl-4">env</span><span class="hl-1">), </span><span class="hl-4">ctx</span><span class="hl-1"> });</span><br/><span class="hl-1">  }</span><br/><br/><span class="hl-1">  </span><span class="hl-5">async</span><span class="hl-1"> </span><span class="hl-0">fetch</span><span class="hl-1">(</span><span class="hl-4">request</span><span class="hl-1">: </span><span class="hl-8">Request</span><span class="hl-1">): </span><span class="hl-8">Promise</span><span class="hl-1">&lt;</span><span class="hl-8">Response</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-5">this</span><span class="hl-1">.</span><span class="hl-4">cartridge</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">request</span><span class="hl-1">.</span><span class="hl-0">text</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">Response</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">stdout</span><span class="hl-1">, { </span><span class="hl-4">status:</span><span class="hl-1"> </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">status</span><span class="hl-1"> === </span><span class="hl-9">0</span><span class="hl-1"> ? </span><span class="hl-9">200</span><span class="hl-1"> : </span><span class="hl-9">500</span><span class="hl-1"> });</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<div class="tsd-alert tsd-alert-caution"><div class="tsd-alert-title"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><use href="../assets/icons.svg#icon-alertCaution"></use></svg><span>Caution</span></div><p>
+<strong><code>alarm()</code> is not gated as a whole while <code>fetch()</code> is.</strong> An <code>alarm()</code> handler that already holds
+the gate and calls something acquiring it again hangs forever, and it presents as a deadlock while
+actually being starvation. Use <code>withInterpreter()</code> once per handler rather than nesting gated
+calls, and never re-arm a failing alarm at a fixed interval: a step that re-armed at +1 ms spun an
+object forever and starved every gated request past 90 s.</p>
+</div>
+<hr>
+<h2 id="the-supervisor-on-the-response-path" class="tsd-anchor-link">The Supervisor on the Response Path<a href="#the-supervisor-on-the-response-path" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">CircuitBreaker</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">ensureHealthTable</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">gcHealthLedger</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">quarantineDecision</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">recordFinding</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">runHostTripwires</span><br/><span class="hl-1">} </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge/supervisor&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">breaker</span><span class="hl-1"> = </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">CircuitBreaker</span><span class="hl-1">();</span><br/><span class="hl-0">ensureHealthTable</span><span class="hl-1">(</span><span class="hl-4">ctx</span><span class="hl-1">.</span><span class="hl-4">storage</span><span class="hl-1">.</span><span class="hl-4">sql</span><span class="hl-1">);</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">findings</span><span class="hl-1"> = </span><span class="hl-0">runHostTripwires</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">status:</span><span class="hl-1"> </span><span class="hl-9">200</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">bytes:</span><span class="hl-1"> </span><span class="hl-4">body</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">path:</span><span class="hl-1"> </span><span class="hl-4">url</span><span class="hl-1">.</span><span class="hl-4">pathname</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">medianBytes:</span><span class="hl-1"> </span><span class="hl-4">rollingMedian</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">maskDepth:</span><span class="hl-1"> </span><span class="hl-4">cartridge</span><span class="hl-1">.</span><span class="hl-0">stats</span><span class="hl-1">().</span><span class="hl-4">mask</span><span class="hl-1">.</span><span class="hl-4">depth</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">asyncifyCalls:</span><span class="hl-1"> (</span><span class="hl-4">globalThis</span><span class="hl-1"> </span><span class="hl-3">as</span><span class="hl-1"> { </span><span class="hl-4">__cfwAsyncifyCalls</span><span class="hl-1">?: </span><span class="hl-8">number</span><span class="hl-1"> }).</span><span class="hl-4">__cfwAsyncifyCalls</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">finding</span><span class="hl-1"> </span><span class="hl-5">of</span><span class="hl-1"> </span><span class="hl-4">findings</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">rung</span><span class="hl-1"> = </span><span class="hl-4">breaker</span><span class="hl-1">.</span><span class="hl-0">record</span><span class="hl-1">(</span><span class="hl-4">finding</span><span class="hl-1">.</span><span class="hl-4">code</span><span class="hl-1">, </span><span class="hl-4">finding</span><span class="hl-1">.</span><span class="hl-4">severity</span><span class="hl-1">, </span><span class="hl-4">Date</span><span class="hl-1">.</span><span class="hl-0">now</span><span class="hl-1">());</span><br/><span class="hl-1">  </span><span class="hl-0">recordFinding</span><span class="hl-1">(</span><span class="hl-4">ctx</span><span class="hl-1">.</span><span class="hl-4">storage</span><span class="hl-1">.</span><span class="hl-4">sql</span><span class="hl-1">, </span><span class="hl-4">finding</span><span class="hl-1">, </span><span class="hl-4">Date</span><span class="hl-1">.</span><span class="hl-0">now</span><span class="hl-1">(), </span><span class="hl-4">rung</span><span class="hl-1">);</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> { </span><span class="hl-6">quarantine</span><span class="hl-1">, </span><span class="hl-6">reason</span><span class="hl-1"> } = </span><span class="hl-0">quarantineDecision</span><span class="hl-1">(</span><span class="hl-4">findings</span><span class="hl-1">);</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">quarantine</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">Response</span><span class="hl-1">(</span><span class="hl-4">reason</span><span class="hl-1">, { </span><span class="hl-4">status:</span><span class="hl-1"> </span><span class="hl-9">503</span><span class="hl-1">, </span><span class="hl-4">headers:</span><span class="hl-1"> { </span><span class="hl-2">&#39;retry-after&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-2">&#39;30&#39;</span><span class="hl-1"> } });</span><br/><span class="hl-1">}</span><br/><span class="hl-0">gcHealthLedger</span><span class="hl-1">(</span><span class="hl-4">ctx</span><span class="hl-1">.</span><span class="hl-4">storage</span><span class="hl-1">.</span><span class="hl-4">sql</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Every observation is a scalar the caller already had, so nothing here becomes a full-table scan on
+the request path. <code>gcHealthLedger()</code> returns what it deleted so you can bill it against a
+rows-written budget: an unbounded log table reached 46% of a database before anybody looked.</p>
+<hr>
+<h2 id="the-tail-worker" class="tsd-anchor-link">The Tail Worker<a href="#the-tail-worker" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="jsonc"><span class="hl-7">// wrangler.jsonc, in the PRODUCER worker</span><br/><span class="hl-1">{ </span><span class="hl-15">&quot;tail_consumers&quot;</span><span class="hl-1">: [{ </span><span class="hl-15">&quot;service&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;interpreter-tail&quot;</span><span class="hl-1"> }] }</span>
+</code><button type="button">Copy</button></pre>
+
+<pre><code class="ts"><span class="hl-7">// the consumer worker&#39;s entrypoint</span><br/><span class="hl-3">export</span><span class="hl-1"> { </span><span class="hl-3">default</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge/tail&#39;</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>You get one summary line per batch, PHP-level error lines re-emitted at the top level so they are
+greppable without unpacking the summary, and a canary verdict once all three legs of a run have been
+observed. Correlation is in memory, so a missed correlation degrades to &quot;incomplete&quot; on the next run
+rather than to a wrong verdict.</p>
+<hr>
+<h2 id="driving-the-pieces-by-hand" class="tsd-anchor-link">Driving the Pieces by Hand<a href="#driving-the-pieces-by-hand" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>The default path is an arrangement of exported parts.</p>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">Gate</span><span class="hl-1">, </span><span class="hl-4">doGate</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge/gate&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">createMask</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge/mask&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">mountRecord</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge/fs&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">gate</span><span class="hl-1"> = </span><span class="hl-0">doGate</span><span class="hl-1">(</span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">Gate</span><span class="hl-1">(), </span><span class="hl-4">ctx</span><span class="hl-1">);</span><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">mask</span><span class="hl-1"> = </span><span class="hl-0">createMask</span><span class="hl-1">();</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">output</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">gate</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-5">async</span><span class="hl-1"> () </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-0">mountRecord</span><span class="hl-1">(</span><span class="hl-8">module</span><span class="hl-1">.</span><span class="hl-6">FS</span><span class="hl-1">, { </span><span class="hl-2">&#39;/main.php&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-4">source</span><span class="hl-1"> });</span><br/><span class="hl-1">  </span><span class="hl-7">// a host callback goes inside the mask; callMain does NOT</span><br/><span class="hl-1">  </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">rows</span><span class="hl-1"> = </span><span class="hl-4">mask</span><span class="hl-1">.</span><span class="hl-0">withMask</span><span class="hl-1">(() </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-0">queryTheDatabase</span><span class="hl-1">());</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-8">module</span><span class="hl-1">.</span><span class="hl-0">callMain</span><span class="hl-1">([</span><span class="hl-2">&#39;php&#39;</span><span class="hl-1">, </span><span class="hl-2">&#39;/main.php&#39;</span><span class="hl-1">]);</span><br/><span class="hl-1">}, </span><span class="hl-2">&#39;one run&#39;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong><code>callMain</code> goes outside the mask.</strong> The mask holds the interrupt off across a host call that puts a
+JS frame under the interpreter. The interpreter's own execution is the stack a slice has to be able
+to interrupt, so masking <code>callMain</code> disables slicing, and the dev assertion that would catch it never
+fires: the suspension never comes.</p>
+<hr>
+<h2 id="the-verification-lanes" class="tsd-anchor-link">The Verification Lanes<a href="#the-verification-lanes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>Two lanes, both on every push.</p>
+<pre><code class="sh"><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-5">--frozen-lockfile</span><br/><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">test</span><span class="hl-1">              </span><span class="hl-7"># workerd: every recipe&#39;s adapter shape, over stand-in modules</span><br/><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">test:interpreters</span><span class="hl-1"> </span><span class="hl-7"># node: the real builds, driven through this package</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Every interpreter package is a pinned <code>devDependency</code>, which is where renovate's npm manager looks. A
+version inside a shell script, a <code>curl</code> URL or a workflow <code>env:</code> gets no bump PR and rots until a
+recipe breaks; a renovate PR here is the run that answers whether a recipe still works against the
+new release. A devDependency is never installed for a consumer, so the cost falls on contributors and
+CI.</p>
+<p><a href="../media/e2e.yml"><code>.github/workflows/e2e.yml</code></a> runs the second lane, built so silence
+cannot read as success:</p>
+<ul>
+<li><code>bun install --frozen-lockfile</code> installs the builds, so a missing or drifted one is a failed
+install rather than a skipped suite.</li>
+<li>With <code>CI</code> set, a build that is nonetheless absent makes <code>real-builds.spec.ts</code> throw at module scope
+rather than leave a <code>describe</code> skipped.</li>
+<li>It reads vitest's JSON report and fails if zero tests ran, if any test was skipped, or if the
+report is missing.</li>
+<li>There is no <code>if:</code> on the job, and the branch filter is <code>master</code>.</li>
+</ul>
+<p>A build that stops satisfying the contract turns the lane red on the next push.</p>
+<hr>
+<h2 id="things-that-will-bite-you" class="tsd-anchor-link">Things That Will Bite You<a href="#things-that-will-bite-you" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the request hangs forever, no error</td>
+<td>the gate was acquired twice inside one call. Starvation, not deadlock</td>
+</tr>
+<tr>
+<td><code>SuspendError: trying to suspend JS frames</code></td>
+<td>either a host callback ran unmasked, or the build lacks <code>-sSUPPORT_LONGJMP=wasm</code></td>
+</tr>
+<tr>
+<td><code>ReferenceError: Asyncify is not defined</code></td>
+<td>the shim was not imported, or a bundler tree-shook it. Check <code>sideEffects</code> in your bundler config</td>
+</tr>
+<tr>
+<td>slicing silently stops happening</td>
+<td>a leaked mask depth. <code>createCartridge()</code> reports it as <code>interpreter.mask_leaked</code>; a hand-rolled gate will not</td>
+</tr>
+<tr>
+<td>the module throws before it instantiates</td>
+<td><code>self.location</code> is missing on workerd. Import <code>@drupflare/cartridge/shim</code> first, for its effect</td>
+</tr>
+<tr>
+<td>a wasm compile error only inside a request</td>
+<td>workerd blocks request-time wasm codegen. The binary must be a module-scope import</td>
+</tr>
+<tr>
+<td>the interpreter ran twice on the first request</td>
+<td><code>-sINVOKE_RUN=0</code> was not set, so instantiation ran <code>main</code> before any script was written</td>
+</tr>
+<tr>
+<td>memory climbs across warm requests, never falls</td>
+<td><code>LAZY_FS_BUDGET_BYTES</code> is unset or too high. wasm memory never shrinks, so watch the trend</td>
+</tr>
+<tr>
+<td>a restored heap throws <code>RandomException</code>, or stalls 80-120 s</td>
+<td>the open fd table was not reproduced at the same fd numbers. Inode alignment is not the issue; that was tested and falsified</td>
+</tr>
+<tr>
+<td><code>materialise()</code> computes <code>NaN</code></td>
+<td>a <code>StreamPackEntry</code> was handed to the per-file reader. The two index shapes are not interchangeable</td>
+</tr>
+<tr>
+<td><code>RuntimeError: Aborted('callMain' was not exported...)</code></td>
+<td>the raw module went to <code>instantiate</code> and the build does not export it. Write the adapter; <code>createCartridge()</code> names this <code>interpreter.no_entry_point</code></td>
+</tr>
+<tr>
+<td><code>TypeError: FS.utime is not a function</code></td>
+<td>a mount called it on a build that has none, such as wasmoon. <code>MountFS.utime</code> is optional and this package calls it as <code>utime?.()</code></td>
+</tr>
+<tr>
+<td>a WASI write answers <code>errno 44</code></td>
+<td>the parent directory does not exist. A preopen has no <code>mkdir -p</code>; <code>mkdirp()</code> creates each segment</td>
+</tr>
+<tr>
+<td>one run's last line arrives at the front of the next run</td>
+<td>the build buffers output bytes and flushes on a newline. php-wasm needs <code>flush()</code> inside <code>callMain</code></td>
+</tr>
+</tbody>
+</table>
+</div></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
+<details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>On This Page</h3></summary>
+<div class="tsd-accordion-details"><a href="#advanced-usage"><span>Advanced <wbr/>Usage</span></a>
+<ul>
+<li><a href="#language-status"><span>Language <wbr/>Status</span></a></li>
+<li><a href="#contents"><span>Contents</span></a></li>
+<li><a href="#the-interpreter-contract"><span>The <wbr/>Interpreter <wbr/>Contract</span></a></li>
+<li><a href="#php-83"><span>PHP 8.3</span></a></li>
+<li><a href="#the-edge-php-build"><span>The <wbr/>Edge <wbr/>PHP <wbr/>Build</span></a></li>
+<li><a href="#cpython-3"><span>C<wbr/>Python 3</span></a></li>
+<li><a href="#lua-54"><span>Lua 5.4</span></a></li>
+<li><a href="#quickjs"><span>Quick<wbr/>JS</span></a></li>
+<li><a href="#cruby-34"><span>C<wbr/>Ruby 3.4</span></a></li>
+<li><a href="#java"><span>Java</span></a></li>
+<li><a href="#structured-input-and-output"><span>Structured <wbr/>Input and <wbr/>Output</span></a></li>
+<li><a href="#interpreter-flags-and-argv"><span>Interpreter <wbr/>Flags and <wbr/>Argv</span></a></li>
+<li><a href="#a-nonzero-exit"><span>A <wbr/>Nonzero <wbr/>Exit</span></a></li>
+<li><a href="#two-interpreters-in-one-isolate"><span>Two <wbr/>Interpreters in <wbr/>One <wbr/>Isolate</span></a></li>
+<li><a href="#a-big-tree-mounted-lazily"><span>A <wbr/>Big <wbr/>Tree, <wbr/>Mounted <wbr/>Lazily</span></a></li>
+<li><a href="#a-mutable-layer-in-r2"><span>A <wbr/>Mutable <wbr/>Layer in <wbr/>R2</span></a></li>
+<li><a href="#inside-a-durable-object"><span>Inside a <wbr/>Durable <wbr/>Object</span></a></li>
+<li><a href="#the-supervisor-on-the-response-path"><span>The <wbr/>Supervisor on the <wbr/>Response <wbr/>Path</span></a></li>
+<li><a href="#the-tail-worker"><span>The <wbr/>Tail <wbr/>Worker</span></a></li>
+<li><a href="#driving-the-pieces-by-hand"><span>Driving the <wbr/>Pieces by <wbr/>Hand</span></a></li>
+<li><a href="#the-verification-lanes"><span>The <wbr/>Verification <wbr/>Lanes</span></a></li>
+<li><a href="#things-that-will-bite-you"><span>Things <wbr/>That <wbr/>Will <wbr/>Bite <wbr/>You</span></a></li></ul></div></details></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="../modules.html">@drupflare/cartridge - v0.1.0</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>

@@ -1,0 +1,564 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="./"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>@drupflare/cartridge - v0.1.0</title><meta name="description" content="Documentation for @drupflare/cartridge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script defer src="assets/main.js"></script><script async src="assets/icons.js" id="tsd-icons-script"></script><script async src="assets/search.js" id="tsd-search-script"></script><script async src="assets/navigation.js" id="tsd-nav-script"></script><script async src="assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="index.html" class="title">@drupflare/cartridge - v0.1.0</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<h1>@drupflare/cartridge - v0.1.0</h1></div>
+<div class="tsd-panel tsd-typography"><h1 id="🎮-cartridge" class="tsd-anchor-link">🎮 cartridge<a href="#🎮-cartridge" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1>
+<blockquote>
+<p>Run a blocking wasm interpreter inside a Cloudflare Durable Object</p>
+</blockquote>
+<p><a href="https://github.com/drupflare/cartridge/actions/workflows/build.yml"><img src="https://github.com/drupflare/cartridge/actions/workflows/build.yml/badge.svg" alt="Build"></a>
+<a href="https://github.com/drupflare/cartridge/actions/workflows/e2e.yml"><img src="https://github.com/drupflare/cartridge/actions/workflows/e2e.yml/badge.svg" alt="Interpreters"></a>
+<a href="https://github.com/drupflare/cartridge/actions/workflows/prettier.yml"><img src="https://github.com/drupflare/cartridge/actions/workflows/prettier.yml/badge.svg" alt="Prettier"></a>
+<a href="https://codecov.io/gh/drupflare/cartridge"><img src="https://codecov.io/gh/drupflare/cartridge/branch/master/graph/badge.svg" alt="codecov"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a></p>
+<p>cartridge runs a blocking wasm interpreter inside a Cloudflare Durable Object. Pass
+<code>createCartridge()</code> a wasm module and call <code>run()</code>; the reentrancy gate, the interrupt mask and the
+filesystem are wired for you. Every piece stays exported for callers that need them directly.</p>
+<p>The Workers runtime is asynchronous and a wasm interpreter is not. Two overlapping invocations
+share one mutable machine — globals, open file descriptors, session state — and interleave into
+plausible wrong output rather than failing.</p>
+<p>Nothing here is specific to PHP. Five real builds run through <code>tests/interpreters/</code> on every push:
+<strong>PHP 8.3</strong> (php-wasm), <strong>Lua 5.4</strong> (wasmoon), <strong>CPython 3</strong> (Pyodide), <strong>QuickJS</strong>
+(quickjs-emscripten) and <strong>CRuby 3.4</strong> (ruby.wasm, over WASI rather than emscripten). See
+<a href="documents/ADVANCED_USAGE.html">ADVANCED_USAGE.md</a> for the per-language status and a recipe for each.</p>
+<hr>
+<h2 id="📋-table-of-contents" class="tsd-anchor-link">📋 Table of Contents<a href="#📋-table-of-contents" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<ul>
+<li><a href="#-why-cartridge">Why Cartridge</a></li>
+<li><a href="#-install">Install</a></li>
+<li><a href="#-quick-start">Quick Start</a></li>
+<li><a href="#-what-is-here">What Is Here</a></li>
+<li><a href="#-subpath-exports">Subpath Exports</a></li>
+<li><a href="#-ergonomics">Ergonomics</a></li>
+<li><a href="#-error-handling">Error Handling</a></li>
+<li><a href="#-reentrancy-gate">Reentrancy Gate</a></li>
+<li><a href="#-interrupt-mask">Interrupt Mask</a></li>
+<li><a href="#-filesystem">Filesystem</a></li>
+<li><a href="#-supervisor">Supervisor</a></li>
+<li><a href="#-tail-worker">Tail Worker</a></li>
+<li><a href="#-two-layers">Two Layers</a></li>
+<li><a href="#-testing">Testing</a></li>
+<li><a href="#-related-repositories">Related Repositories</a></li>
+<li><a href="#-license">License</a></li>
+</ul>
+<hr>
+<h2 id="🎯-why-cartridge" class="tsd-anchor-link">🎯 Why Cartridge<a href="#🎯-why-cartridge" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>A wasm interpreter is <strong>a single mutable machine</strong>. Globals, the autoloader cache, the container
+pointer, open file descriptors and session state are all process-wide. Two overlapping invocations do
+not fail loudly. They interleave and produce plausible wrong output.</p>
+<p>Cloudflare's runtime is the opposite shape. It is event-driven and it will happily deliver a second
+request while the first is parked. Durable Objects narrow that, but do not close it.</p>
+<p>So the host has to supply four things the interpreter cannot supply for itself: serialisation, a way
+to hold off an interrupt across a host call, a filesystem that does not cost a full inflate at boot,
+and a repair path that does not run inside the thing it repairs.</p>
+<p>Each is silent when it is missing. An unmasked callback surfaces as <code>SuspendError</code> from wherever the
+opcode counter happened to land, months later and under load.</p>
+<hr>
+<h2 id="📥-install" class="tsd-anchor-link">📥 Install<a href="#📥-install" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="sh"><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">add</span><span class="hl-1"> </span><span class="hl-2">@drupflare/cartridge</span>
+</code><button type="button">Copy</button></pre>
+
+<p>One runtime dependency, <code>fflate</code>. A lazy mount inflates inside a synchronous <code>open()</code> from wasm,
+where <code>DecompressionStream</code> cannot be awaited.</p>
+<hr>
+<h2 id="🚀-quick-start" class="tsd-anchor-link">🚀 Quick Start<a href="#🚀-quick-start" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">createCartridge</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">cartridge</span><span class="hl-1"> = </span><span class="hl-0">createCartridge</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-7">// whatever your build&#39;s factory is; forward the io it gives you</span><br/><span class="hl-1">  </span><span class="hl-0">instantiate</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">io</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-0">initInterpreter</span><span class="hl-1">({ </span><span class="hl-4">print:</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-4">print</span><span class="hl-1">, </span><span class="hl-4">printErr:</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">.</span><span class="hl-4">printErr</span><span class="hl-1"> }),</span><br/><span class="hl-1">  </span><span class="hl-7">// files every run should see, written once at boot</span><br/><span class="hl-1">  </span><span class="hl-4">files:</span><span class="hl-1"> { </span><span class="hl-2">&#39;lib/helper.txt&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-2">&#39;shared by every run&#39;</span><span class="hl-1"> }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">cartridge</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&#39;print(&quot;hello&quot;)&#39;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">stdoutText</span><span class="hl-1">); </span><span class="hl-7">// &quot;hello\n&quot;</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">status</span><span class="hl-1">); </span><span class="hl-7">// 0</span>
+</code><button type="button">Copy</button></pre>
+
+<p>That is the default path. Every entry is serialised, every <code>print</code> runs masked, the script is
+in the filesystem before <code>callMain</code> is entered, and a leaked mask depth is reported by name instead
+of poisoning the next run.</p>
+<p><strong>What your build has to satisfy</strong> is two members:</p>
+<pre><code class="ts"><span class="hl-5">interface</span><span class="hl-1"> </span><span class="hl-8">Interpreter</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">FS</span><span class="hl-1">: </span><span class="hl-8">MountFS</span><span class="hl-1">; </span><span class="hl-7">// emscripten&#39;s FS: mkdir, writeFile, and optionally utime</span><br/><span class="hl-1">  </span><span class="hl-0">callMain</span><span class="hl-1">(</span><span class="hl-4">argv</span><span class="hl-1">: </span><span class="hl-8">string</span><span class="hl-1">[]): </span><span class="hl-8">number</span><span class="hl-1"> | </span><span class="hl-8">void</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>which is what emscripten produces for a <code>main()</code>-having program built with <code>-sINVOKE_RUN=0</code> and
+<code>-sEXPORTED_RUNTIME_METHODS=callMain,FS</code>. <strong>Most published builds do not do that</strong>: wasmoon, Pyodide,
+quickjs-emscripten, ruby.wasm and php-wasm were all checked and none of the five exports <code>callMain</code>,
+so writing it as a two-line adapter is the normal case rather than the fallback. <code>createMemoryFS()</code>
+supplies the other half when a build has no filesystem either, and <code>FS</code> is three method signatures
+rather than emscripten's object, so a WASI preopen satisfies it too. See the recipes in
+<a href="documents/ADVANCED_USAGE.html">ADVANCED_USAGE.md</a>, each labelled with what was actually run.</p>
+<hr>
+<h2 id="🧰-what-is-here" class="tsd-anchor-link">🧰 What Is Here<a href="#🧰-what-is-here" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Lines</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lazy-fs.ts</code></td>
+<td>563</td>
+<td>MEMFS mount that inflates a file on first open, from layered per-file packs</td>
+</tr>
+<tr>
+<td><code>supervisor.ts</code></td>
+<td>533</td>
+<td>tripwires, the health ledger, the circuit breaker, the repair ladder</td>
+</tr>
+<tr>
+<td><code>cartridge.ts</code></td>
+<td>460</td>
+<td><code>createCartridge()</code>: the high-level default, and <code>RunResult</code></td>
+</tr>
+<tr>
+<td><code>mount.ts</code></td>
+<td>374</td>
+<td>the eager streaming mount, the driver mount, <code>mountRecord()</code>, <code>createMemoryFS()</code></td>
+</tr>
+<tr>
+<td><code>tail-worker.ts</code></td>
+<td>359</td>
+<td>summarises a Tail Worker's events into something a human reads</td>
+</tr>
+<tr>
+<td><code>mask.ts</code></td>
+<td>328</td>
+<td>the refcounted interrupt mask, plus the VM slice counters</td>
+</tr>
+<tr>
+<td><code>serialize.ts</code></td>
+<td>142</td>
+<td><code>Gate</code>: one interpreter, one invocation at a time</td>
+</tr>
+<tr>
+<td><code>util.ts</code></td>
+<td>150</td>
+<td><code>fromUtf8</code>/<code>toUtf8</code>, <code>encodeJson</code>/<code>decodeJson</code>, <code>toBytes</code>, <code>splitLines</code></td>
+</tr>
+<tr>
+<td><code>errors.ts</code></td>
+<td>119</td>
+<td>the five-name error vocabulary, each with a stable dotted <code>code</code></td>
+</tr>
+<tr>
+<td><code>worker-shim.ts</code></td>
+<td>72</td>
+<td>makes the emscripten <code>ENVIRONMENT=worker</code> build instantiate on workerd</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="🧭-subpath-exports" class="tsd-anchor-link">🧭 Subpath Exports<a href="#🧭-subpath-exports" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>One package, <code>sideEffects</code> declared honestly, and a subpath per concern so a bundler can drop what
+you do not use.</p>
+<table>
+<thead>
+<tr>
+<th>Import</th>
+<th>What is in it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@drupflare/cartridge</code></td>
+<td>everything below except the shim</td>
+</tr>
+<tr>
+<td><code>@drupflare/cartridge/cartridge</code></td>
+<td><code>createCartridge()</code>, <code>RunResult</code>, <code>Interpreter</code></td>
+</tr>
+<tr>
+<td><code>@drupflare/cartridge/gate</code></td>
+<td><code>Gate</code>, <code>doGate</code>, <code>GateStats</code></td>
+</tr>
+<tr>
+<td><code>@drupflare/cartridge/mask</code></td>
+<td><code>createMask</code>, the singleton, <code>vmFromBinary</code>, the slice counters</td>
+</tr>
+<tr>
+<td><code>@drupflare/cartridge/fs</code></td>
+<td>both mounts, <code>mountRecord</code>, <code>createMemoryFS</code>, both pack-index shapes</td>
+</tr>
+<tr>
+<td><code>@drupflare/cartridge/supervisor</code></td>
+<td>tripwires, <code>CircuitBreaker</code>, the ledger DDL</td>
+</tr>
+<tr>
+<td><code>@drupflare/cartridge/tail</code></td>
+<td>the Tail Worker handler and its pure reducers</td>
+</tr>
+<tr>
+<td><code>@drupflare/cartridge/util</code></td>
+<td>the byte, string and JSON conveniences</td>
+</tr>
+<tr>
+<td><code>@drupflare/cartridge/errors</code></td>
+<td>the error vocabulary</td>
+</tr>
+<tr>
+<td><code>@drupflare/cartridge/shim</code></td>
+<td><strong>side-effectful</strong>; import for effect before the glue evaluates</td>
+</tr>
+</tbody>
+</table>
+<div class="tsd-alert tsd-alert-warning"><div class="tsd-alert-title"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><use href="assets/icons.svg#icon-alertWarning"></use></svg><span>Warning</span></div><p>
+<code>sideEffects</code> is an array rather than <code>false</code>. <code>worker-shim.ts</code> patches
+<code>globalThis</code> at import time; declaring the package side-effect-free would let a bundler tree-shake
+it away, which deletes the <code>Asyncify</code> stub and restores an <strong>uncatchable</strong> request kill. Declaring
+<code>true</code> would disable shaking for the whole package. The array is the only honest answer, and
+<code>tests/exports.spec.ts</code> pins it.</p>
+</div>
+<hr>
+<h2 id="✨-ergonomics" class="tsd-anchor-link">✨ Ergonomics<a href="#✨-ergonomics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><strong>Never build a <code>TextEncoder</code> to use this package.</strong> Every payload takes <code>string | Uint8Array</code>;
+everything that hands bytes back also hands back decoded text.</p>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">createCartridge</span><span class="hl-1">, </span><span class="hl-4">fromUtf8</span><span class="hl-1">, </span><span class="hl-4">toUtf8</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">cartridge</span><span class="hl-1"> = </span><span class="hl-0">createCartridge</span><span class="hl-1">({ </span><span class="hl-4">instantiate</span><span class="hl-1"> });</span><br/><br/><span class="hl-7">// a string or bytes, both fine</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">cartridge</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&#39;print(1)&#39;</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">cartridge</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-0">fromUtf8</span><span class="hl-1">(</span><span class="hl-2">&#39;print(1)&#39;</span><span class="hl-1">));</span><br/><br/><span class="hl-7">// structured input, no encoder at the call site</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">cartridge</span><span class="hl-1">.</span><span class="hl-0">writeJson</span><span class="hl-1">(</span><span class="hl-2">&#39;input.json&#39;</span><span class="hl-1">, { </span><span class="hl-4">items:</span><span class="hl-1"> [</span><span class="hl-9">1</span><span class="hl-1">, </span><span class="hl-9">2</span><span class="hl-1">, </span><span class="hl-9">3</span><span class="hl-1">] });</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">cartridge</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&#39;read input.json and print a total&#39;</span><span class="hl-1">);</span><br/><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">stdout</span><span class="hl-1">; </span><span class="hl-7">// Uint8Array, the primitive</span><br/><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">stdoutText</span><span class="hl-1">; </span><span class="hl-7">// string, what you wanted</span><br/><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-0">json</span><span class="hl-1">&lt;{ </span><span class="hl-4">total</span><span class="hl-1">: </span><span class="hl-8">number</span><span class="hl-1"> }&gt;(); </span><span class="hl-7">// parsed</span><br/><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-0">lines</span><span class="hl-1">(); </span><span class="hl-7">// [&#39;{&quot;total&quot;:6}&#39;]</span><br/><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-0">lastLine</span><span class="hl-1">(); </span><span class="hl-7">// the last line, no trailing empty element</span><br/><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-0">assertOk</span><span class="hl-1">(); </span><span class="hl-7">// throws InterpreterError naming the status and stderr</span>
+</code><button type="button">Copy</button></pre>
+
+<p>And the raw path is still there:</p>
+<pre><code class="ts"><span class="hl-7">// the module itself, instantiated if needed, handed over inside the gate</span><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">raw</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">cartridge</span><span class="hl-1">.</span><span class="hl-0">interpreter</span><span class="hl-1">();</span><br/><br/><span class="hl-7">// or run arbitrary work against it, still serialised against every other entry</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">cartridge</span><span class="hl-1">.</span><span class="hl-0">withInterpreter</span><span class="hl-1">((</span><span class="hl-4">module</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-8">module</span><span class="hl-1">.</span><span class="hl-6">FS</span><span class="hl-1">.</span><span class="hl-0">writeFile</span><span class="hl-1">(</span><span class="hl-2">&#39;/tmp/x&#39;</span><span class="hl-1">, </span><span class="hl-2">&#39;by hand&#39;</span><span class="hl-1">));</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Naming is fixed so it is learnable once: <code>to*</code>/<code>from*</code> for codecs (<code>toUtf8</code>, <code>fromUtf8</code>), <code>*Json</code> for
+serialise/parse (<code>writeJson</code>, <code>encodeJson</code>, <code>decodeJson</code>), <code>*Text</code> for decoded fields (<code>stdoutText</code>),
+<code>.json()</code> / <code>.lines()</code> on a result.</p>
+<hr>
+<h2 id="🔔-error-handling" class="tsd-anchor-link">🔔 Error Handling<a href="#🔔-error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>Five names, one base, and every one carries a stable dotted <code>code</code>. Match on the code, not on the
+message text.</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Default code</th>
+<th>Raised when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CartridgeError</code></td>
+<td><code>cartridge.error</code></td>
+<td>the base; also the JSON codec refusals</td>
+</tr>
+<tr>
+<td><code>GateError</code></td>
+<td><code>gate.error</code></td>
+<td>the gate was misused, or observed two runs at once</td>
+</tr>
+<tr>
+<td><code>MaskViolationError</code></td>
+<td><code>mask.violation</code></td>
+<td>an unbalanced mask, or a suspension attempted while masked</td>
+</tr>
+<tr>
+<td><code>MountError</code></td>
+<td><code>mount.error</code></td>
+<td>a pack was unreachable, or the FS refused a write</td>
+</tr>
+<tr>
+<td><code>BudgetError</code></td>
+<td><code>budget.exceeded</code></td>
+<td>a slice, a resident-bytes ceiling or an interrupt allowance</td>
+</tr>
+<tr>
+<td><code>InterpreterError</code></td>
+<td><code>interpreter.error</code></td>
+<td>instantiation, no entry point, a nonzero exit, a leaked mask</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">InterpreterError</span><span class="hl-1">, </span><span class="hl-4">isCartridgeError</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">try</span><span class="hl-1"> {</span><br/><span class="hl-1">  (</span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">cartridge</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">script</span><span class="hl-1">)).</span><span class="hl-0">assertOk</span><span class="hl-1">();</span><br/><span class="hl-1">} </span><span class="hl-3">catch</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1"> </span><span class="hl-5">instanceof</span><span class="hl-1"> </span><span class="hl-8">InterpreterError</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">error</span><span class="hl-1">.</span><span class="hl-4">code</span><span class="hl-1"> === </span><span class="hl-2">&#39;interpreter.nonzero_exit&#39;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-7">// the script failed, which is different from the interpreter failing</span><br/><span class="hl-1">  } </span><span class="hl-3">else</span><span class="hl-1"> </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-0">isCartridgeError</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">)) {</span><br/><span class="hl-1">    </span><span class="hl-7">// something in the cartridge layer; error.code says which seam</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The codes use the same dotted shape as <code>supervisor.ts</code>'s <code>Finding.code</code>, so a thrown error and a
+recorded finding about the same defect correlate without a translation table.</p>
+<hr>
+<h2 id="🚧-reentrancy-gate" class="tsd-anchor-link">🚧 Reentrancy Gate<a href="#🚧-reentrancy-gate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><code>Gate</code> serialises entry into the interpreter: one invocation at a time, queued in FIFO order.</p>
+<p>Every host call is synchronous today, so nothing overlaps yet. One suspending call — JSPI, an
+awaited query, an outbound fetch — is enough for a second request to enter while the first is
+parked mid-request.</p>
+<p>Two separate mechanisms exist:</p>
+<table>
+<thead>
+<tr>
+<th>Mechanism</th>
+<th>Where it works</th>
+<th>Why not only this one</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Gate</code></td>
+<td>a plain Worker, a Durable Object, <code>wrangler dev</code></td>
+<td>portable, and what the tests drive</td>
+</tr>
+<tr>
+<td><code>ctx.blockConcurrencyWhile()</code></td>
+<td>a Durable Object only</td>
+<td>stronger — the runtime stops delivering events — but it caps at 30 s and cannot be nested</td>
+</tr>
+</tbody>
+</table>
+<p><code>doGate(gate, ctx)</code> is the combination, and the order matters: the gate is entered <strong>first</strong> and the
+block is taken inside it, never the other way round; <code>blockConcurrencyWhile</code> cannot nest.
+Pass a <code>ctx</code> to <code>createCartridge()</code> and you get that automatically.</p>
+<div class="tsd-alert tsd-alert-caution"><div class="tsd-alert-title"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><use href="assets/icons.svg#icon-alertCaution"></use></svg><span>Caution</span></div><p>
+<strong>Acquiring the gate inside a call that already holds it hangs forever</strong>, with no error. <code>alarm()</code>
+is not gated as a whole while <code>fetch()</code> is, so before adding a gated entry point, check whether
+you are already inside one.</p>
+</div>
+<hr>
+<h2 id="🎭-interrupt-mask" class="tsd-anchor-link">🎭 Interrupt Mask<a href="#🎭-interrupt-mask" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><code>mask.ts</code> is the piece with the least obvious reason to exist. <code>_zend_wasm_slice_arm(period)</code> fires
+the VM interrupt on an <strong>opcode counter, not a seam</strong>, and JSPI cannot suspend a stack with a JS
+frame in it — <code>SuspendError: trying to suspend JS frames</code>. Several host calls put exactly that frame
+under the interpreter's stack: the SQL bridge, the codec inside it, the logger, every capability
+call, every lazy-FS <code>inflateSync</code>, and every <code>print</code> callback.</p>
+<p>So the interrupt has to be held off for the duration of the host call and released after it. The mask
+is <strong>refcounted</strong>, since those calls nest, and it exposes counters so a leak is visible rather than
+inferred:</p>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">createMask</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge/mask&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">mask</span><span class="hl-1"> = </span><span class="hl-0">createMask</span><span class="hl-1">();</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">rows</span><span class="hl-1"> = </span><span class="hl-4">mask</span><span class="hl-1">.</span><span class="hl-0">withMask</span><span class="hl-1">(() </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">// any host call that puts a JS frame under the interpreter goes here</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> [];</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> { </span><span class="hl-6">enters</span><span class="hl-1">, </span><span class="hl-6">nested</span><span class="hl-1">, </span><span class="hl-6">maxDepth</span><span class="hl-1">, </span><span class="hl-6">deferred</span><span class="hl-1">, </span><span class="hl-6">violations</span><span class="hl-1"> } = </span><span class="hl-4">mask</span><span class="hl-1">.</span><span class="hl-0">stats</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Four properties, each of which is a way this goes silently wrong without it:</p>
+<ol>
+<li><strong>Refcounted.</strong> The cases nest — a host call can trigger a lazy-FS read — and a non-counting
+mask unmasks at the inner exit.</li>
+<li><strong>A pending flag that fires on unmask.</strong> <code>zend_wasm_tick_fired()</code> skips <code>EG(vm_interrupt)</code>
+entirely while masked; it does not defer it, so the boundary is lost unless the host remembers it.</li>
+<li><strong>The budget re-checked on unmask</strong>, not only at the poll site. One inflate member is ~1 ms of
+local ratio, so a masked window can overrun a slice on its own.</li>
+<li><strong>A dev assertion</strong> that suspension never happens above depth 0. <code>MaskViolationError</code> is thrown
+rather than swallowed.</li>
+</ol>
+<p><code>createCartridge()</code> gives each cartridge a <strong>fresh</strong> mask rather than the module singleton: two
+interpreters in one isolate are two C-side counters, and sharing one host counter would make both
+depths wrong. The singleton stays exported for the single-interpreter case the worker uses.</p>
+<div class="tsd-alert tsd-alert-note"><div class="tsd-alert-title"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><use href="assets/icons.svg#icon-alertNote"></use></svg><span>Note</span></div><p>
+The depth the host tracks is the <strong>host</strong> depth. The C handler masks itself for the duration of its
+own yield, so <code>zend_wasm_slice_stat(4)</code> reads 1 inside a yield and that is correct, not a
+violation. Never assert on it.</p>
+</div>
+<hr>
+<h2 id="💾-filesystem" class="tsd-anchor-link">💾 Filesystem<a href="#💾-filesystem" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>Three mounts, for three different sizes of problem.</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>For</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mountRecord()</code></td>
+<td>a handful of files you have in hand</td>
+<td>none; a plain <code>Record&lt;string, string | bytes&gt;</code></td>
+</tr>
+<tr>
+<td><code>mountDrupalStreaming()</code></td>
+<td>a whole tree, materialised at boot</td>
+<td>one inflate of everything</td>
+</tr>
+<tr>
+<td><code>mountDrupalLazy()</code></td>
+<td>a whole tree, inflated per file on first <code>open()</code></td>
+<td>one resident compressed blob + an LRU</td>
+</tr>
+</tbody>
+</table>
+<p><code>mountRecord()</code> is the one a first use wants, and <code>createCartridge({ files })</code> calls it for you. A
+pack is the right answer for an 11,421-file CMS tree and the wrong answer for the three files an
+interpreter needs to run one script.</p>
+<p>When the build has <strong>no filesystem of its own</strong> — quickjs-emscripten exports none, and a TeaVM or
+WASI target has no emscripten <code>FS</code> either — <code>createMemoryFS()</code> is a <code>MountFS</code> over a <code>Map</code>, with
+<code>read()</code> and <code>readText()</code> so the adapter never builds a <code>TextDecoder</code>. <code>MountFS.utime</code> is optional
+for the same reason: wasmoon's Lua build ships a real emscripten <code>FS</code> and no <code>utime</code> at all, and only
+<code>mountDrupalStreaming()</code> ever calls it.</p>
+<p>The lazy mount attacks cold start, measured at 3,754 ms of <code>cpuTime</code>
+and <strong>3,066 ms of that was the mount</strong>. Layers merge in order, so a driver or a patch can shadow a
+base pack without either being rebuilt, and <code>InflateStats</code> reports what was actually inflated — which
+is the measurement that says whether laziness paid.</p>
+<div class="tsd-alert tsd-alert-important"><div class="tsd-alert-title"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><use href="assets/icons.svg#icon-alertImportant"></use></svg><span>Important</span></div><p>
+<strong><code>StreamPackEntry</code> and <code>PerFilePackEntry</code> are not one type and must not be merged.</strong> <code>o</code> means
+different things: the streaming index offsets into the INFLATED concatenation <code>core.bin.gz</code>
+produces, the per-file index offsets into the COMPRESSED blob and needs <code>c</code> beside <code>l</code>. One
+interface covering both would give <code>o</code> two meanings and make <code>c</code> optional for <code>materialise()</code>,
+which computes <code>blob.subarray(e.o, e.o + e.c)</code> and would get <code>NaN</code>.</p>
+</div>
+<p>Two further behaviours:</p>
+<ul>
+<li><strong>Layers merge BEFORE node creation</strong>, so a later layer overrides an earlier one on the same path.</li>
+<li><strong>Heap restore depends on the open file-descriptor table, at the same fd numbers.</strong> Inode alignment
+does <strong>not</strong> matter: that was measured and falsified (shifting every inode by 1 and by 500 both
+restored byte-identically). Dropping <code>/dev/urandom</code>'s fd alone throws; dropping sqlite's fds gives
+a locking-protocol error after an <strong>80-120 second stall</strong>, which on an edge runtime is a hung
+request, not an error. If you touch the mount or the snapshot path, that is the invariant.</li>
+</ul>
+<p>An R2-backed layer costs <strong>zero subrequests</strong>, making R2 the right store for a mutable layer.</p>
+<hr>
+<h2 id="🩺-supervisor" class="tsd-anchor-link">🩺 Supervisor<a href="#🩺-supervisor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><code>supervisor.ts</code> holds the half of a health layer that must be JavaScript: <strong>a repair path must not
+depend on the subsystem it repairs.</strong></p>
+<p>The interpreter cannot observe a JS throw out of a wasm import — measured twice, <code>@</code> and a <code>catch</code>
+are both useless and the whole invocation dies — cannot observe its own isolate being killed, and
+cannot be trusted to fix itself once poisoned. So detection and repair for those classes live out
+here.</p>
+<p><strong>Every tripwire corresponds to a defect this project has already shipped and then found.</strong> That is
+the selection criterion, and each one names its incident. A check nobody has seen fire is decoration.</p>
+<p>The breaker decays rather than looping: the same code N times inside a window escalates one rung on
+the ladder, a clean interval decays one rung, and bounded attempts halt with a named reason.</p>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">CircuitBreaker</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">quarantineDecision</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">runHostTripwires</span><br/><span class="hl-1">} </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge/supervisor&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">findings</span><span class="hl-1"> = </span><span class="hl-0">runHostTripwires</span><span class="hl-1">({ </span><span class="hl-4">status:</span><span class="hl-1"> </span><span class="hl-9">200</span><span class="hl-1">, </span><span class="hl-4">bytes:</span><span class="hl-1"> </span><span class="hl-9">0</span><span class="hl-1">, </span><span class="hl-4">path:</span><span class="hl-1"> </span><span class="hl-2">&#39;/&#39;</span><span class="hl-1"> });</span><br/><span class="hl-5">const</span><span class="hl-1"> { </span><span class="hl-6">quarantine</span><span class="hl-1">, </span><span class="hl-6">reason</span><span class="hl-1"> } = </span><span class="hl-0">quarantineDecision</span><span class="hl-1">(</span><span class="hl-4">findings</span><span class="hl-1">);</span><br/><span class="hl-7">// quarantine === true, reason === &#39;render.empty: 200 with 0 bytes&#39;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Quarantine beats wrong output.</strong> A 503 with <code>Retry-After</code> is a better answer than a 0-byte 200, and
+this project has shipped the 0-byte 200 — then cached it, then served it from the edge.</p>
+<hr>
+<h2 id="📡-tail-worker" class="tsd-anchor-link">📡 Tail Worker<a href="#📡-tail-worker" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p><code>wrangler tail</code> reports CPU only while an operator is attached. A Tail Worker receives the same
+trace events from inside the platform, continuously and with no operator present.</p>
+<p>It also carries the <strong>canary</strong>. The CPU-attribution result the whole slicing design rests on is
+undocumented behaviour: work parked in one Durable Object invocation and resumed in another is
+charged to the <strong>resuming</strong> invocation. If Cloudflare changes that, nothing in the product fails
+loudly — renders just stop fitting. So <code>evaluateCanary()</code> re-checks the invariant, with thresholds as
+<strong>ratios</strong> rather than milliseconds. Absolute <code>cpuTime</code> varies by colo (a render that was
+46 ms on one deploy was 75 ms on another).</p>
+<hr>
+<h2 id="🏗-two-layers" class="tsd-anchor-link">🏗 Two Layers<a href="#🏗-two-layers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>The sibling library <code>edgeport</code> uses a two-layer rule: a private <code>src/core/</code> is the only code
+importing the platform primitive, and every public module builds on it. That rule does not transfer
+here.</p>
+<p><strong>cartridge imports nothing from the platform.</strong> <code>grep -rn &quot;from 'cloudflare&quot; src/</code> returns nothing.
+The primitive it is about — an emscripten <code>Module</code> with an <code>FS</code> — is instantiated by the <strong>consumer</strong>
+and handed in through <code>instantiate</code>, and the Durable Object state arrives as an optional
+<code>BlockingContext</code> with one method on it. So the invariant the two-layer split exists to protect is
+already satisfied by there being no platform import to contain.</p>
+<p>What does transfer, and is applied: subpath exports from one package, an honest <code>sideEffects</code>
+declaration, a uniform error vocabulary, ergonomics with an escape hatch, and recipes each backed by
+a green spec.</p>
+<hr>
+<h2 id="🧪-testing" class="tsd-anchor-link">🧪 Testing<a href="#🧪-testing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="sh"><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">typecheck</span><br/><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">test</span><span class="hl-1"> </span><span class="hl-7"># 305 assertions across 12 specs, in workerd</span><br/><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">test:coverage</span><br/><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">test:interpreters</span><span class="hl-1"> </span><span class="hl-7"># 33 assertions against real wasm builds, in node</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>305 passing, 82% of statements.</strong> The gate runs under <code>@cloudflare/vitest-pool-workers</code>, so it
+executes inside <strong>workerd</strong> rather than Node, and coverage uses <code>provider: 'istanbul'</code> rather than
+<code>v8</code>. That is a runtime fact, not a preference: the v8 provider reads coverage off the Node
+inspector, and these tests run inside workerd's isolate, so it attributes zero while every test
+passes.</p>
+<p>Four brackets, and each one is honest about what it can prove:</p>
+<table>
+<thead>
+<tr>
+<th>Bracket</th>
+<th>Where</th>
+<th>Proves</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>behaviour over a fake</td>
+<td>most specs</td>
+<td>the contract, without a 40 MB binary in the way</td>
+</tr>
+<tr>
+<td>the real platform primitive</td>
+<td><code>mount.spec.ts</code> (real gzip, real <code>Response</code>, <code>Fetcher</code>)</td>
+<td>the inflate-and-write path end to end</td>
+</tr>
+<tr>
+<td>source assertions</td>
+<td><code>lazy-fs.spec.ts</code>, part of <code>mask.spec.ts</code></td>
+<td>invariants no fake can reach into</td>
+</tr>
+<tr>
+<td>a real wasm interpreter</td>
+<td><code>tests/interpreters/</code> (PHP, Lua, CPython, QuickJS, Ruby)</td>
+<td>that a published build satisfies <code>{ FS, callMain }</code></td>
+</tr>
+</tbody>
+</table>
+<p>That last lane is the only thing that makes <code>ADVANCED_USAGE.md</code> say <strong>Verified</strong>. Its five builds are
+pinned <code>devDependencies</code> so renovate bumps them, and <code>e2e.yml</code> runs it on every push with a guard
+that fails if zero tests ran or any was skipped: a silently skipped lane reads as a pass.</p>
+<p><code>lazy-fs.ts</code> has low line coverage (~11%). <code>mountDrupalLazy()</code> patches MEMFS node internals,
+borrowing <code>stream_ops</code> off a probe node the runtime made, so driving it needs a real emscripten
+build rather than a fake. Its invariants are pinned by source assertions instead.</p>
+<hr>
+<h2 id="🔗-related-repositories" class="tsd-anchor-link">🔗 Related Repositories<a href="#🔗-related-repositories" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<table>
+<thead>
+<tr>
+<th>Repository</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/drupflare/worker"><code>drupflare/worker</code></a></td>
+<td>the consumer: Drupal 11 on Cloudflare Workers</td>
+</tr>
+<tr>
+<td><a href="https://github.com/drupflare/durabledb"><code>drupflare/durabledb</code></a></td>
+<td>imports <code>/gate</code> and <code>/mask</code> for its SQL bridge</td>
+</tr>
+<tr>
+<td><a href="https://github.com/drupflare/phasm"><code>drupflare/phasm</code></a></td>
+<td>builds the interpreter, including the VM interrupt patch the mask drives</td>
+</tr>
+<tr>
+<td><a href="https://github.com/drupflare/stream-http"><code>drupflare/stream-http</code></a></td>
+<td>the PHP-side <code>https://</code> stream wrapper, over an injected fetch</td>
+</tr>
+<tr>
+<td><a href="https://github.com/drupflare/untarl"><code>drupflare/untarl</code></a></td>
+<td>tar and tar.gz extraction with no Node APIs</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="📄-license" class="tsd-anchor-link">📄 License<a href="#📄-license" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>MIT (c) Gregory Mitchell 2026. See <a href="media/LICENSE">LICENSE</a>.</p>
+</div></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
+<details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>On This Page</h3></summary>
+<div class="tsd-accordion-details"><a href="#🎮-cartridge"><span>🎮 cartridge</span></a>
+<ul>
+<li><a href="#📋-table-of-contents"><span>📋 <wbr/>Table of <wbr/>Contents</span></a></li>
+<li><a href="#🎯-why-cartridge"><span>🎯 <wbr/>Why <wbr/>Cartridge</span></a></li>
+<li><a href="#📥-install"><span>📥 <wbr/>Install</span></a></li>
+<li><a href="#🚀-quick-start"><span>🚀 <wbr/>Quick <wbr/>Start</span></a></li>
+<li><a href="#🧰-what-is-here"><span>🧰 <wbr/>What <wbr/>Is <wbr/>Here</span></a></li>
+<li><a href="#🧭-subpath-exports"><span>🧭 <wbr/>Subpath <wbr/>Exports</span></a></li>
+<li><a href="#✨-ergonomics"><span>✨ <wbr/>Ergonomics</span></a></li>
+<li><a href="#🔔-error-handling"><span>🔔 <wbr/>Error <wbr/>Handling</span></a></li>
+<li><a href="#🚧-reentrancy-gate"><span>🚧 <wbr/>Reentrancy <wbr/>Gate</span></a></li>
+<li><a href="#🎭-interrupt-mask"><span>🎭 <wbr/>Interrupt <wbr/>Mask</span></a></li>
+<li><a href="#💾-filesystem"><span>💾 <wbr/>Filesystem</span></a></li>
+<li><a href="#🩺-supervisor"><span>🩺 <wbr/>Supervisor</span></a></li>
+<li><a href="#📡-tail-worker"><span>📡 <wbr/>Tail <wbr/>Worker</span></a></li>
+<li><a href="#🏗-two-layers"><span>🏗 <wbr/>Two <wbr/>Layers</span></a></li>
+<li><a href="#🧪-testing"><span>🧪 <wbr/>Testing</span></a></li>
+<li><a href="#🔗-related-repositories"><span>🔗 <wbr/>Related <wbr/>Repositories</span></a></li>
+<li><a href="#📄-license"><span>📄 <wbr/>License</span></a></li></ul></div></details></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="modules.html">@drupflare/cartridge - v0.1.0</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>
