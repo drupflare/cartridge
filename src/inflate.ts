@@ -26,8 +26,25 @@
 import { decompress } from 'fzstd';
 import { InterpreterError } from './errors';
 
+/**
+ * A synchronous zstd decompressor.
+ *
+ * `fzstd` satisfies this, and so does {@link zstdDecoderFromWasm}.
+ */
+export type ZstdDecompress = (frame: Uint8Array, into: Uint8Array | undefined) => Uint8Array;
+
 /** Options for {@link wasmModuleFromZstd} and {@link inflateZstd}. */
 export interface InflateOptions {
+	/**
+	 * A decompressor to use instead of the bundled pure-JS one.
+	 *
+	 * The default costs 5,591 bytes on the size meter and about 257 ms of startup for a 9 MB
+	 * interpreter, which measured as 94% of the whole startup cost. {@link zstdDecoderFromWasm}
+	 * trades roughly 25,000 bytes for most of that time back.
+	 *
+	 * @since 0.1.2
+	 */
+	decompress?: ZstdDecompress;
 	/**
 	 * Expected inflated byte length, as a cross-check against the frame's own header.
 	 *
@@ -111,12 +128,13 @@ export function inflateZstd(
 		);
 	}
 
+	const inflate = options.decompress ?? decompress;
 	try {
 		// pre-sized from the frame's own header, so one exact allocation replaces growing and
 		// copying a multi-megabyte buffer
 		return declared === undefined
-			? decompress(framed)
-			: decompress(framed, new Uint8Array(declared));
+			? inflate(framed, undefined)
+			: inflate(framed, new Uint8Array(declared));
 	} catch (cause) {
 		throw new InterpreterError(
 			`the zstd blob did not inflate: ${cause instanceof Error ? cause.message : String(cause)}`,
@@ -157,4 +175,106 @@ export function wasmModuleFromZstd(
 			'inflate.not-wasm'
 		);
 	}
+}
+
+/**
+ * Build a {@link ZstdDecompress} backed by a zstd decoder compiled to wasm.
+ *
+ * The pure-JS default is the whole startup cost: measured on a deployed worker, inflating a 9 MB
+ * interpreter took ~257 ms of a ~274 ms startup, leaving ~17 ms for the actual
+ * `WebAssembly.Module` compile. A wasm decoder imported as `CompiledWasm` is compiled by the
+ * platform ahead of the isolate, so it costs ~8 ms to have and decodes far faster.
+ *
+ * The module must export `memory`, `malloc`, `free`, `ZSTD_decompress` and `ZSTD_isError`, and may
+ * export `_initialize`, which is called if present. One import is tolerated and stubbed,
+ * `env.emscripten_notify_memory_growth`.
+ *
+ * @example
+ * ```ts
+ * import decoder from '../vendor/zstddec.wasm';
+ * import blob from '../vendor/php.wasm.zst';
+ *
+ * const wasmModule = wasmModuleFromZstd(blob, { decompress: zstdDecoderFromWasm(decoder) });
+ * ```
+ *
+ * @since 0.1.2
+ * @param module - the decoder, from a wrangler `CompiledWasm` import
+ * @throws {InterpreterError} if the module does not expose the expected exports
+ */
+export function zstdDecoderFromWasm(module: WebAssembly.Module): ZstdDecompress {
+	let instance: WebAssembly.Instance;
+	try {
+		instance = new WebAssembly.Instance(module, {
+			// emscripten calls this after memory.grow; there is nothing to notify
+			env: { emscripten_notify_memory_growth: () => {} }
+		});
+	} catch (cause) {
+		throw new InterpreterError(
+			`the zstd decoder did not instantiate: ${cause instanceof Error ? cause.message : String(cause)}`,
+			'inflate.decoder-broken'
+		);
+	}
+
+	const api = instance.exports as Record<string, unknown>;
+	for (const name of ['memory', 'malloc', 'free', 'ZSTD_decompress', 'ZSTD_isError']) {
+		if (api[name] === undefined) {
+			throw new InterpreterError(
+				`the zstd decoder exports no ${name}; it is not a decoder this can drive`,
+				'inflate.decoder-incomplete'
+			);
+		}
+	}
+	(api._initialize as (() => void) | undefined)?.();
+
+	const memory = api.memory as WebAssembly.Memory;
+	const malloc = api.malloc as (size: number) => number;
+	const free = api.free as (ptr: number) => void;
+	const decompressInto = api.ZSTD_decompress as (
+		dst: number,
+		dstCap: number,
+		src: number,
+		srcSize: number
+	) => number;
+	const isError = api.ZSTD_isError as (code: number) => number;
+
+	return (frame, into) => {
+		const outSize = into?.byteLength ?? zstdContentSize(frame);
+		if (outSize === undefined) {
+			throw new InterpreterError(
+				'the frame declares no content size, so the wasm decoder cannot size its output',
+				'inflate.no-declared-size'
+			);
+		}
+
+		const inPtr = malloc(frame.byteLength);
+		const outPtr = malloc(outSize);
+		if (inPtr === 0 || outPtr === 0) {
+			throw new InterpreterError(
+				`the decoder could not allocate ${frame.byteLength + outSize} bytes`,
+				'inflate.decoder-oom'
+			);
+		}
+		// EVERY view is taken AFTER the last malloc. malloc can grow the memory, and growing
+		// detaches the old ArrayBuffer, so a view captured earlier is zero-length and silently
+		// copies nothing
+		new Uint8Array(memory.buffer, inPtr, frame.byteLength).set(frame);
+
+		const written = decompressInto(outPtr, outSize, inPtr, frame.byteLength);
+		free(inPtr);
+		if (isError(written) !== 0 || written !== outSize) {
+			free(outPtr);
+			throw new InterpreterError(
+				`the wasm decoder returned ${written} for a frame declaring ${outSize}`,
+				'inflate.corrupt'
+			);
+		}
+
+		// a VIEW onto the decoder's memory rather than a copy: WebAssembly.Module copies the bytes
+		// while compiling, so the multi-megabyte second allocation is pure waste. outPtr is
+		// deliberately never freed -- this runs once per isolate at module scope
+		const out = new Uint8Array(memory.buffer, outPtr, outSize);
+		if (into === undefined) return out;
+		into.set(out);
+		return into;
+	};
 }
