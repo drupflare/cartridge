@@ -1,0 +1,87 @@
+{
+	"name": "@drupflare/cartridge",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Run a blocking wasm interpreter inside a Cloudflare Durable Object",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./cartridge": "./src/cartridge.ts",
+		"./errors": "./src/errors.ts",
+		"./fs": "./src/fs.ts",
+		"./gate": "./src/serialize.ts",
+		"./mask": "./src/mask.ts",
+		"./shim": "./src/worker-shim.ts",
+		"./supervisor": "./src/supervisor.ts",
+		"./tail": "./src/tail-worker.ts",
+		"./util": "./src/util.ts",
+		"./package.json": "./package.json"
+	},
+	"sideEffects": [
+		"./src/worker-shim.ts"
+	],
+	"files": [
+		"src",
+		"LICENSE",
+		"README.md",
+		"ADVANCED_USAGE.md"
+	],
+	"scripts": {
+		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"test": "vitest run --project=unit",
+		"test:watch": "vitest --project=unit",
+		"test:coverage": "vitest run --project=unit --coverage",
+		"test:interpreters": "vitest run --project=interpreters",
+		"prettier": "prettier --write .",
+		"prettier:check": "prettier --check .",
+		"prepare": "husky"
+	},
+	"dependencies": {
+		"fflate": "^0.8.3"
+	},
+	"devDependencies": {
+		"@bjorn3/browser_wasi_shim": "^0.4.2",
+		"@cloudflare/vitest-pool-workers": "^0.21.0",
+		"@cloudflare/workers-types": "^5.20260811.1",
+		"@ruby/3.4-wasm-wasi": "^2.10.1",
+		"@ruby/wasm-wasi": "^2.10.1",
+		"@vitest/coverage-istanbul": "^4.1.0",
+		"husky": "^9.1.7",
+		"lint-staged": "^17.3.0",
+		"php-wasm": "0.1.0",
+		"prettier": "^3.9.6",
+		"prettier-plugin-organize-imports": "^4.3.0",
+		"prettier-plugin-sh": "^0.19.0",
+		"pyodide": "^314.0.3",
+		"quickjs-emscripten": "^0.32.0",
+		"typescript": "^5.9.3",
+		"vitest": "^4.1.0",
+		"wasmoon": "^1.16.0",
+		"wrangler": "^4.20.0"
+	},
+	"license": "MIT",
+	"author": "Gregory Mitchell <me@gmitch215.xyz>",
+	"homepage": "https://github.com/drupflare/cartridge",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/drupflare/cartridge.git"
+	},
+	"bugs": {
+		"url": "https://github.com/drupflare/cartridge/issues"
+	},
+	"keywords": [
+		"cloudflare",
+		"workers",
+		"durable-objects",
+		"wasm",
+		"interpreter",
+		"emscripten",
+		"memfs",
+		"reentrancy",
+		"tail-worker"
+	],
+	"lint-staged": {
+		"*.{ts,js,mjs,css,md,json,jsonc}": "prettier --write"
+	}
+}
