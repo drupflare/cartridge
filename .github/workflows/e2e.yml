@@ -1,0 +1,76 @@
+name: Verify Interpreter Recipes
+
+on:
+  push:
+    branches: [master, ver/*, feat/*, renovate/*]
+  pull_request:
+    branches: [master, ver/*, feat/*, renovate/*]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  interpreters:
+    name: Real Interpreter Builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+
+    env:
+      CI: 'true'
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 'latest'
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+      - name: Verify the Recipes Against Real Builds
+        run: bun run test:interpreters --reporter=default --reporter=json --outputFile.json=tmp-interpreters.json
+      - name: Fail on a Silent Skip
+        if: ${{ !cancelled() }}
+        run: |
+          ref="$(git describe --tags --always 2>/dev/null || echo '')"
+          REF="$ref" bun -e '
+          const file = Bun.file("tmp-interpreters.json");
+          if (!(await file.exists())) {
+            console.error("::error::no interpreter report was written, so nothing proves the suite ran");
+            process.exit(1);
+          }
+          const r = await file.json();
+          const skipped = r.numPendingTests + r.numTodoTests;
+          const dev = (await Bun.file("package.json").json()).devDependencies;
+          const names = ["php-wasm", "wasmoon", "pyodide", "quickjs-emscripten", "@ruby/wasm-wasi", "@ruby/3.4-wasm-wasi", "@bjorn3/browser_wasi_shim"];
+          console.log("### Interpreter recipes verified against real builds\n");
+          console.log("| package | version |\n| ------- | ------- |");
+          for (const name of names) console.log(`| ${name} | ${dev[name]} |`);
+          console.log(`\nref: ${process.env.REF || "unknown"}`);
+          console.log(`total=${r.numTotalTests} passed=${r.numPassedTests} failed=${r.numFailedTests} skipped=${skipped}`);
+          if (r.numTotalTests === 0) {
+            console.error("::error::no interpreter test ran at all");
+            process.exit(1);
+          }
+          if (skipped > 0) {
+            console.error(`::error::${skipped} interpreter test(s) were SKIPPED; every recipe this job claims has to actually run`);
+            process.exit(1);
+          }
+          if (r.numFailedTests > 0) {
+            console.error(`::error::${r.numFailedTests} interpreter test(s) failed`);
+            process.exit(1);
+          }' >> "${GITHUB_STEP_SUMMARY:-/dev/stdout}"
+      - name: Archive the Interpreter Report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: interpreter-report
+          path: tmp-interpreters.json
+          retention-days: 14
+          if-no-files-found: warn
