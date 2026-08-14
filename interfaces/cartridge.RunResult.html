@@ -19,7 +19,7 @@ thing a caller actually wanted, and offering only one of them is how a library e
 </div></section>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">RunResult</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#path">path</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#status">status</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#stderr">stderr</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Uint8Array</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#stderrtext">stderrText</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#stdout">stdout</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Uint8Array</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#stdouttext">stdoutText</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#assertok-1">assertOk</a><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <a href="" class="tsd-signature-type tsd-kind-interface">RunResult</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#firstline-1">firstLine</a><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#json-1">json</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#jsont">T</a> <span class="tsd-signature-symbol">=</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#jsont">T</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#lastline-1">lastLine</a><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#lineat-1">lineAt</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">index</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#lines-1">lines</a><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/0f00c7c256e9331da2012b2d73b03262af3bd25b/src/cartridge.ts#L83">src/cartridge.ts:83</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/2d74ace4726a00996d2e0ed0bc9fec202ba7197a/src/cartridge.ts#L83">src/cartridge.ts:83</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -52,38 +52,38 @@ thing a caller actually wanted, and offering only one of them is how a library e
 <div class="tsd-comment tsd-typography"><p>the script path that was run</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/0f00c7c256e9331da2012b2d73b03262af3bd25b/src/cartridge.ts#L87">src/cartridge.ts:87</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/2d74ace4726a00996d2e0ed0bc9fec202ba7197a/src/cartridge.ts#L87">src/cartridge.ts:87</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="status"><span>status</span><a href="#status" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">status</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
 <div class="tsd-comment tsd-typography"><p>exit status; 0 for a <code>main</code> that returned nothing</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/0f00c7c256e9331da2012b2d73b03262af3bd25b/src/cartridge.ts#L85">src/cartridge.ts:85</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/2d74ace4726a00996d2e0ed0bc9fec202ba7197a/src/cartridge.ts#L85">src/cartridge.ts:85</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="stderr"><span>stderr</span><a href="#stderr" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">stderr</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Uint8Array</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/0f00c7c256e9331da2012b2d73b03262af3bd25b/src/cartridge.ts#L89">src/cartridge.ts:89</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/2d74ace4726a00996d2e0ed0bc9fec202ba7197a/src/cartridge.ts#L89">src/cartridge.ts:89</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="stderrtext"><span>stderr<wbr/>Text</span><a href="#stderrtext" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">stderrText</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
 <div class="tsd-comment tsd-typography"><p>stderr, UTF-8 decoded</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/0f00c7c256e9331da2012b2d73b03262af3bd25b/src/cartridge.ts#L93">src/cartridge.ts:93</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/2d74ace4726a00996d2e0ed0bc9fec202ba7197a/src/cartridge.ts#L93">src/cartridge.ts:93</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="stdout"><span>stdout</span><a href="#stdout" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">stdout</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Uint8Array</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/0f00c7c256e9331da2012b2d73b03262af3bd25b/src/cartridge.ts#L88">src/cartridge.ts:88</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/2d74ace4726a00996d2e0ed0bc9fec202ba7197a/src/cartridge.ts#L88">src/cartridge.ts:88</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="stdouttext"><span>stdout<wbr/>Text</span><a href="#stdouttext" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">stdoutText</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
 <div class="tsd-comment tsd-typography"><p>stdout, UTF-8 decoded</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/0f00c7c256e9331da2012b2d73b03262af3bd25b/src/cartridge.ts#L91">src/cartridge.ts:91</a></li></ul></aside></section></section></details>
+<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/2d74ace4726a00996d2e0ed0bc9fec202ba7197a/src/cartridge.ts#L91">src/cartridge.ts:91</a></li></ul></aside></section></section></details>
 <details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Methods"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
 <h2 class="tsd-anchor-link" id="methods-1">Methods<a href="#methods-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
 <section>
@@ -97,7 +97,7 @@ thing a caller actually wanted, and offering only one of them is how a library e
 </div>
 <h4 class="tsd-returns-title">Returns <a href="" class="tsd-signature-type tsd-kind-interface">RunResult</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/0f00c7c256e9331da2012b2d73b03262af3bd25b/src/cartridge.ts#L103">src/cartridge.ts:103</a></li></ul></aside></div></li></ul></section>
+<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/2d74ace4726a00996d2e0ed0bc9fec202ba7197a/src/cartridge.ts#L103">src/cartridge.ts:103</a></li></ul></aside></div></li></ul></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="firstline"><span>first<wbr/>Line</span><a href="#firstline" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -106,7 +106,7 @@ thing a caller actually wanted, and offering only one of them is how a library e
 <div class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/0f00c7c256e9331da2012b2d73b03262af3bd25b/src/cartridge.ts#L98">src/cartridge.ts:98</a></li></ul></aside></div></li></ul></section>
+<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/2d74ace4726a00996d2e0ed0bc9fec202ba7197a/src/cartridge.ts#L98">src/cartridge.ts:98</a></li></ul></aside></div></li></ul></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="json"><span>json</span><a href="#json" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -121,7 +121,7 @@ thing a caller actually wanted, and offering only one of them is how a library e
 <li><span id="jsont"><span class="tsd-kind-type-parameter">T</span> = <span class="tsd-signature-type">unknown</span></span></li></ul></section>
 <h4 class="tsd-returns-title">Returns <a class="tsd-signature-type tsd-kind-type-parameter" href="#jsont">T</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/0f00c7c256e9331da2012b2d73b03262af3bd25b/src/cartridge.ts#L95">src/cartridge.ts:95</a></li></ul></aside></div></li></ul></section>
+<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/2d74ace4726a00996d2e0ed0bc9fec202ba7197a/src/cartridge.ts#L95">src/cartridge.ts:95</a></li></ul></aside></div></li></ul></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="lastline"><span>last<wbr/>Line</span><a href="#lastline" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -130,7 +130,7 @@ thing a caller actually wanted, and offering only one of them is how a library e
 <div class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/0f00c7c256e9331da2012b2d73b03262af3bd25b/src/cartridge.ts#L99">src/cartridge.ts:99</a></li></ul></aside></div></li></ul></section>
+<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/2d74ace4726a00996d2e0ed0bc9fec202ba7197a/src/cartridge.ts#L99">src/cartridge.ts:99</a></li></ul></aside></div></li></ul></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="lineat"><span>line<wbr/>At</span><a href="#lineat" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -145,7 +145,7 @@ thing a caller actually wanted, and offering only one of them is how a library e
 <li><span><span class="tsd-kind-parameter">index</span>: <span class="tsd-signature-type">number</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/0f00c7c256e9331da2012b2d73b03262af3bd25b/src/cartridge.ts#L101">src/cartridge.ts:101</a></li></ul></aside></div></li></ul></section>
+<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/2d74ace4726a00996d2e0ed0bc9fec202ba7197a/src/cartridge.ts#L101">src/cartridge.ts:101</a></li></ul></aside></div></li></ul></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="lines"><span>lines</span><a href="#lines" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -156,7 +156,7 @@ thing a caller actually wanted, and offering only one of them is how a library e
 </div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/0f00c7c256e9331da2012b2d73b03262af3bd25b/src/cartridge.ts#L97">src/cartridge.ts:97</a></li></ul></aside></div></li></ul></section></section></details></div>
+<li>Defined in <a href="https://github.com/drupflare/cartridge/blob/2d74ace4726a00996d2e0ed0bc9fec202ba7197a/src/cartridge.ts#L97">src/cartridge.ts:97</a></li></ul></aside></div></li></ul></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
