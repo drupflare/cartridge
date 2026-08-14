@@ -1,5 +1,6 @@
 export * from './cartridge';
 export * from './errors';
+export * from './inflate';
 export * from './lazy-fs';
 export * from './mask';
 export * from './mount';

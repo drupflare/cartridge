@@ -4,6 +4,7 @@ import * as cartridgeModule from '../src/cartridge.js';
 import * as errorsModule from '../src/errors.js';
 import * as fsModule from '../src/fs.js';
 import * as indexModule from '../src/index.js';
+import * as inflateModule from '../src/inflate.js';
 import * as maskModule from '../src/mask.js';
 import * as serializeModule from '../src/serialize.js';
 import * as supervisorModule from '../src/supervisor.js';
@@ -31,6 +32,7 @@ const SUBPATHS: Array<[string, string, Record<string, unknown>, string]> = [
 	['./errors', './src/errors.ts', errorsModule, 'CartridgeError'],
 	['./fs', './src/fs.ts', fsModule, 'mountRecord'],
 	['./gate', './src/serialize.ts', serializeModule, 'Gate'],
+	['./inflate', './src/inflate.ts', inflateModule, 'wasmModuleFromZstd'],
 	['./mask', './src/mask.ts', maskModule, 'createMask'],
 	['./supervisor', './src/supervisor.ts', supervisorModule, 'runHostTripwires'],
 	['./tail', './src/tail-worker.ts', tailModule, 'summarize'],
@@ -76,10 +78,13 @@ describe('the package exports map', () => {
 		expect(pkg.version).toMatch(/^0\./);
 	});
 
-	it('keeps the single runtime dependency single', () => {
-		// one dependency is a promise the README makes; a second one arriving unnoticed is what this
-		// pins. fflate is here because inflateSync must run inside a synchronous open() from wasm
-		expect(Object.keys(pkg.dependencies)).toEqual(['fflate']);
+	it('keeps the runtime dependencies to the two synchronous decompressors', () => {
+		// the count is a promise the README makes; a THIRD one arriving unnoticed is what this pins.
+		// both are here for the same reason and neither substitutes for the other: fflate inflates
+		// a lazy mount inside a synchronous open() from wasm, fzstd inflates the interpreter at
+		// module scope, and fflate has no zstd while deflate is gzip's own algorithm and so wins
+		// nothing against a meter that already gzips
+		expect(Object.keys(pkg.dependencies)).toEqual(['fflate', 'fzstd']);
 	});
 });
 

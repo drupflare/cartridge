@@ -5,6 +5,7 @@
 		"src/cartridge.ts",
 		"src/errors.ts",
 		"src/fs.ts",
+		"src/inflate.ts",
 		"src/serialize.ts",
 		"src/mask.ts",
 		"src/worker-shim.ts",
