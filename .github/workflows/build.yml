@@ -70,7 +70,7 @@ jobs:
       - name: Publish to GitHub Packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm publish --access public --registry https://npm.pkg.github.com
+        run: npm publish --access public --tag nightly --registry https://npm.pkg.github.com
       - name: Tag the Nightly as Latest
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
