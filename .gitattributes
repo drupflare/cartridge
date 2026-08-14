@@ -4,12 +4,6 @@
 *.ico binary
 *.bin binary
 
-# keep the npm tarball to what a consumer installs. `files` in package.json is the
-# primary control for npm; these rules cover `git archive` and a GitHub source tarball,
-# which is what a git dependency or a release asset serves.
-# the directories are listed twice on purpose: git archive prunes a directory marked
-# export-ignore, but `git check-attr` on a file inside it reports "unspecified", so the
-# /** form is what makes the exclusion verifiable per file rather than only documented
 /.github export-ignore
 /.github/** export-ignore
 /.husky export-ignore

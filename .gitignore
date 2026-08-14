@@ -1,0 +1,25 @@
+# bun
+node_modules/
+package-lock.json
+
+# build output
+dist/
+
+# wrangler local state and build cache. `wrangler.jsonc` here is the vitest harness, not a
+# deployable, but the pool still writes this directory
+.wrangler
+.dev.vars
+.dev.vars.*
+
+# test and coverage output
+coverage/
+*.lcov
+.vitest-cache/
+
+# logs and scratch
+*.log
+/tmp-*
+
+# editor and OS
+.idea/
+.DS_Store
