@@ -1,4 +1,4 @@
-import { CartridgeError } from './errors.js';
+import { CartridgeError } from './errors';
 
 /**
  * Byte and string conveniences, so no caller of this package ever builds a `TextEncoder`.
