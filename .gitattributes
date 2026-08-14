@@ -8,6 +8,8 @@
 /.github/** export-ignore
 /.husky export-ignore
 /.husky/** export-ignore
+/typedoc export-ignore
+/typedoc/** export-ignore
 /.vscode export-ignore
 /.vscode/** export-ignore
 /tests export-ignore
@@ -22,10 +24,8 @@
 /codecov.yml export-ignore
 /renovate.json export-ignore
 /tsconfig.json export-ignore
+/typedoc.json export-ignore
+/typedoc.sh export-ignore
 /vitest.config.ts export-ignore
 /wrangler.jsonc export-ignore
 /CLAUDE.md export-ignore
-/typedoc export-ignore
-/typedoc/** export-ignore
-/typedoc.json export-ignore
-/typedoc.sh export-ignore

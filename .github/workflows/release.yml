@@ -61,6 +61,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      packages: write
 
     steps:
       - uses: actions/checkout@v7
@@ -137,8 +138,7 @@ jobs:
         if: steps.suffix.outputs.skip == 'false' && steps.published.outputs.skip == 'false'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          npm publish --access public --provenance
+        run: npm publish --access public --provenance
       - name: Publish to Job Summary
         if: always() && steps.suffix.outputs.skip == 'false'
         run: |
@@ -149,3 +149,14 @@ jobs:
           else
             echo "- Result: published with provenance" >> $GITHUB_STEP_SUMMARY
           fi
+      - name: Publish to GitHub Packages
+        if: steps.suffix.outputs.skip == 'false'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm publish --access public --registry https://npm.pkg.github.com || {
+            echo "GitHub Packages publish did not take; it is most likely already present." \
+              >> $GITHUB_STEP_SUMMARY
+          }
+          npm dist-tag add "${PACKAGE}@${VERSION}" latest \
+            --registry https://npm.pkg.github.com || true

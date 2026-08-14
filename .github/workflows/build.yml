@@ -32,3 +32,48 @@ jobs:
         run: bun run typecheck
       - name: Run Vitest Suite
         run: bun run test
+
+  nightly:
+    name: Publish Nightly to GitHub Packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: gate
+    if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/master' }}
+
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 'latest'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@drupflare'
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+      - name: Version with the Commit Hash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          PACKAGE=$(node -p "require('./package.json').name")
+          NIGHTLY="${VERSION}-${GITHUB_SHA::7}"
+          npm version "$NIGHTLY" --no-git-tag-version
+          echo "NIGHTLY=$NIGHTLY" >> "$GITHUB_ENV"
+          echo "PACKAGE=$PACKAGE" >> "$GITHUB_ENV"
+          echo "Publishing nightly $NIGHTLY" >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish to GitHub Packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm publish --access public --registry https://npm.pkg.github.com
+      - name: Tag the Nightly as Latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm dist-tag add "${PACKAGE}@${NIGHTLY}" latest \
+            --registry https://npm.pkg.github.com
