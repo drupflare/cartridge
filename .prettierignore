@@ -3,6 +3,4 @@ dist/
 coverage/
 .wrangler/
 bun.lock
-
-# husky regenerates these shims on every install
 .husky/
