@@ -1,6 +1,6 @@
 {
 	"name": "@drupflare/cartridge",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"type": "module",
 	"description": "Run a blocking wasm interpreter inside a Cloudflare Durable Object",
 	"main": "./src/index.ts",
@@ -11,6 +11,7 @@
 		"./errors": "./src/errors.ts",
 		"./fs": "./src/fs.ts",
 		"./gate": "./src/serialize.ts",
+		"./inflate": "./src/inflate.ts",
 		"./mask": "./src/mask.ts",
 		"./shim": "./src/worker-shim.ts",
 		"./supervisor": "./src/supervisor.ts",
@@ -40,7 +41,8 @@
 		"docs:serve": "typedoc --watch"
 	},
 	"dependencies": {
-		"fflate": "^0.8.3"
+		"fflate": "^0.8.3",
+		"fzstd": "^0.1.1"
 	},
 	"devDependencies": {
 		"@bjorn3/browser_wasi_shim": "^0.4.2",
