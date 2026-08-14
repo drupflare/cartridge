@@ -1,6 +1,6 @@
 {
 	"name": "@drupflare/cartridge",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"type": "module",
 	"description": "Run a blocking wasm interpreter inside a Cloudflare Durable Object",
 	"main": "./src/index.ts",
