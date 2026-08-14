@@ -109,7 +109,7 @@ jobs:
           bun run test
       - name: Set up Node for npm
         if: steps.suffix.outputs.skip == 'false'
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
