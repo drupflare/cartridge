@@ -92,7 +92,7 @@ export interface Mask {
  * counter and the wired call sites need no conditional.
  *
  * `raise` is optional and is the one export the patch does not have yet; see
- * TECHNICAL_REPORT.md, "THE MASK SEAM", for the exact C addition. Without it a deferred
+ * TECHNICAL_REPORT.md, "the mask seam", for the exact C addition. Without it a deferred
  * interrupt lands at the next natural tick instead of immediately.
  */
 export function vmFromBinary(binary?: MaskBinary | null): MaskVm | null {

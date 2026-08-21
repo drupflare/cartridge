@@ -30,7 +30,7 @@ if (typeof g.location === 'undefined') {
 /**
  * Stubs the `Asyncify` object the glue references but ASYNCIFY=0 compiled out.
  *
- * THE BUG THIS CLOSES, and it is a denial-of-service surface rather than a nuisance.
+ * The bug this closes is a denial-of-service surface rather than a nuisance.
  * The glue contains two `Asyncify.handleAsync(...)` call sites --
  * `__asyncjs__php_stream_fetch_real_open` (the http/https stream wrapper) and
  * `__asyncjs__vrzno_await_internal` -- and declares `Asyncify` nowhere, so it is a

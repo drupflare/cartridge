@@ -146,13 +146,13 @@ const EXPORT_FLAG = '-sEXPORTED_RUNTIME_METHODS=callMain,FS';
 /**
  * Why a value cannot be driven as an `Interpreter`, or null if it can.
  *
- * NAMES THE MISSING MEMBER, because "no { FS, callMain }" is the least actionable half of a build
+ * Names the missing member, because "no { FS, callMain }" is the least actionable half of a build
  * problem: of the four real wasm builds this project has driven, exactly one exports `callMain`.
  * Pyodide exposes a complete `FS` and no `callMain`; wasmoon exposes an `FS` without `utime` and no
  * `callMain`; quickjs-emscripten exposes neither. Each needs a different fix, and a caller cannot
  * pick it from a message that lumps all three together.
  *
- * READING A MEMBER CAN THROW, which is the non-obvious half. Emscripten replaces an unexported
+ * Reading a member can throw, which is the non-obvious half. Emscripten replaces an unexported
  * runtime method with a getter that calls `abort()`, so `typeof made.callMain` on wasmoon's raw
  * module raises `RuntimeError: Aborted('callMain' was not exported...)` -- a raw wasm error out of
  * `boot()` instead of this package's named one. The read is guarded for exactly that.

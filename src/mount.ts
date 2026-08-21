@@ -5,7 +5,7 @@
  * mount the same pack without importing a 2,500-line diagnostic worker. prof.js
  * keeps its own copy; this file is the one new code uses.
  *
- * CONVERTED FROM JAVASCRIPT, the same way `src/runtime/serialize.ts` was: importers keep the
+ * Converted from JavaScript the same way `src/runtime/serialize.ts` was: importers keep the
  * `./mount.js` specifier because the bundler resolves it to this file, so no call site changed.
  */
 
@@ -15,7 +15,7 @@ import { toBytes, toUtf8 } from './util';
 /**
  * The MEMFS calls a mount makes; emscripten's FS is far wider than this.
  *
- * `utime` IS OPTIONAL, AND THAT IS A MEASURED WIDENING RATHER THAN A CONVENIENCE. wasmoon's Lua 5.4
+ * **`utime` is optional**, and that is a measured widening. wasmoon's Lua 5.4
  * build ships a real emscripten `FS` with `mkdir` and `writeFile` and **no `utime` at all**
  * (`typeof FS.utime === 'undefined'`, checked in `tests/interpreters/real-builds.spec.ts`), so a
  * required member would have excluded a build that this package otherwise drives end to end.
@@ -107,7 +107,7 @@ export interface RecordMountResult {
 /**
  * Writes a plain record of files into the FS, creating parent directories.
  *
- * FOR THE SMALL CASE, WHICH IS MOST FIRST USES. A pack is the right answer for a 11,421-file CMS
+ * For the small case, which is most first uses. A pack is the right answer for a 11,421-file CMS
  * tree; it is the wrong answer for the three files an interpreter needs to run one script, and
  * making a pack the only mount path is what makes a library feel like it needs a build step.
  *
@@ -160,7 +160,7 @@ export function mkdirp(FS: MountFS, path: string): void {
 /**
  * A `MountFS` backed by a `Map`, for an interpreter whose build exposes no filesystem.
  *
- * WHY THIS SHIPS RATHER THAN BEING A SNIPPET. It was hand-rolled nine times before it existed: four
+ * It ships rather than being a snippet because it was hand-rolled nine times first: four
  * times in `tests/recipes.spec.ts`, twice in ADVANCED_USAGE.md, and once per library-style adapter in
  * `tests/interpreters/real-builds.spec.ts`. Every copy was the same three no-op-or-store methods
  * plus a `TextDecoder` in the `writeFile` branch, which is precisely the encoder this package
@@ -242,16 +242,11 @@ export async function mountDrupalStreaming(
 	opts: MountOptions = {}
 ): Promise<MountResult> {
 	const prefix = opts.prefix ?? 'drupal';
-	// The database can come from a DIFFERENT pack than the code, and it has to be
-	// able to: `assets/drupal/site.sqlite` has no `node.type.*` config at all, so no
-	// content can be created on it, while `assets/drupal-std/site.sqlite` carries the
-	// bundles. Same core tree either way, so this swaps the site rather than the site
-	// AND the code.
+	// the database can come from a different pack than the code: `assets/drupal/site.sqlite` has
+	// no `node.type.*` config at all, while `assets/drupal-std/site.sqlite` carries the bundles
 	const dbPrefix = opts.dbPrefix ?? prefix;
-	// The packed .sqlite exists for ONE consumer: MIGRATE_DB opening it through PDO. With
-	// src/migrate-sql.js replaying the site in JavaScript instead, nothing in the tree reads
-	// it, so fetching it is 6.47 MB and one of the 50 subrequests an invocation gets, spent
-	// on a file no code opens.
+	// the packed .sqlite had one consumer, MIGRATE_DB through PDO; with the JavaScript replay
+	// nothing reads it, so fetching it is 6.47 MB and one of the 50 subrequests, for nothing
 	const wantDatabase = opts.database !== false;
 	const t0 = Date.now();
 	const [idxRes, binRes, dbRes] = await Promise.all([

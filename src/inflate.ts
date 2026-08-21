@@ -1,7 +1,7 @@
 /**
  * Ship the interpreter pre-compressed and inflate it at module scope.
  *
- * Cloudflare measures a Worker's size AFTER ITS OWN GZIP, and you do not get to
+ * Cloudflare measures a Worker's size **after its own gzip**, and you do not get to
  * choose that compressor. You do get to choose what state the bytes are in when they reach it, and
  * gzip cannot shrink data that is already well compressed. So a wasm binary shipped as a `Data`
  * module holding a zstd frame passes through the meter at roughly its zstd size. Measured on the
@@ -56,6 +56,9 @@ export interface InflateOptions {
 }
 
 const ZSTD_MAGIC = [0x28, 0xb5, 0x2f, 0xfd];
+
+/** what a decoder module has to export before {@link zstdDecoderFromWasm} will drive it */
+const DECODER_EXPORTS = ['memory', 'malloc', 'free', 'ZSTD_decompress', 'ZSTD_isError'] as const;
 
 // workers-types models WebAssembly.Module as abstract, because the usual way to get one is a
 // CompiledWasm import rather than a constructor call. The constructor does exist at runtime and is
@@ -215,8 +218,21 @@ export function zstdDecoderFromWasm(module: WebAssembly.Module): ZstdDecompress 
 		);
 	}
 
-	const api = instance.exports as Record<string, unknown>;
-	for (const name of ['memory', 'malloc', 'free', 'ZSTD_decompress', 'ZSTD_isError']) {
+	return _zstdDecoderFromExports(instance.exports as Record<string, unknown>);
+}
+
+/**
+ * Builds a {@link ZstdDecompress} over an already-instantiated decoder's exports.
+ *
+ * @internal Exported for the gate lane. workerd forbids wasm codegen at request time, so a spec
+ * cannot hand {@link zstdDecoderFromWasm} a real `WebAssembly.Module`; driving the exports
+ * directly is the only way to exercise the decode itself rather than the instantiation.
+ *
+ * @param api - the instance's exports
+ * @throws {InterpreterError} if an export the decode needs is missing
+ */
+export function _zstdDecoderFromExports(api: Record<string, unknown>): ZstdDecompress {
+	for (const name of DECODER_EXPORTS) {
 		if (api[name] === undefined) {
 			throw new InterpreterError(
 				`the zstd decoder exports no ${name}; it is not a decoder this can drive`,

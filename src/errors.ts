@@ -26,7 +26,7 @@ export class CartridgeError extends Error {
 /**
  * The reentrancy gate was misused.
  *
- * THE FAILURE THIS NAMES IS NOT A THROW, WHICH IS WHY IT NEEDED A NAME. Acquiring the gate a second
+ * **The failure this names is not a throw**, which is why it needed a name. Acquiring the gate a second
  * time inside a call that already holds it hangs **forever** -- `alarm()` is not gated as a whole
  * while `fetch()` is -- and it presents as a deadlock while actually being starvation. A failing
  * step that re-armed at +1 ms once spun an object forever and starved every gated request past 90 s.
@@ -56,8 +56,8 @@ export class MaskViolationError extends CartridgeError {
 }
 
 /**
- * A filesystem or pack operation failed: a layer that is not reachable, an index entry naming a
- * layer that was never fetched, a write into a path the FS refused.
+ * A filesystem or pack operation failed: a layer that is not reachable, a write into a path the
+ * FS refused.
  */
 export class MountError extends CartridgeError {
 	constructor(message: string, code = 'mount.error') {

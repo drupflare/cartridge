@@ -180,7 +180,7 @@ export interface LazyMountResult {
 /**
  * Normalises the layer list.
  *
- * ONE LAYER IS THE OLD BEHAVIOUR EXACTLY, which is the point: `{prefix: 'drupal-pf'}` produces
+ * One layer is the old behaviour exactly: `{prefix: 'drupal-pf'}` produces
  * the same single fetch pair, the same merged index and the same `blobs[0]` the single-blob
  * version used, so enabling layers cannot regress the mount that already works.
  *
@@ -274,7 +274,8 @@ export function _mergeLayerIndexes(
 		}
 	}
 
-	return [...merged.values()].sort((a, b) => (a.p < b.p ? -1 : a.p > b.p ? 1 : 0));
+	// keyed by `p`, so no two entries compare equal and the sort needs no third arm
+	return [...merged.values()].sort((a, b) => (a.p < b.p ? -1 : 1));
 }
 
 export async function mountDrupalLazy(
@@ -306,8 +307,8 @@ export async function mountDrupalLazy(
 	 * Byte budget for materialised contents, above which the least-recently-inflated
 	 * file is dropped.
 	 *
-	 * WITHOUT THIS THE LAZY MOUNT IS A MEMORY REGRESSION, not just a time win. 1,006
-	 * files is boot plus ONE anonymous front-page render; admin, authenticated and Views
+	 * Without this the lazy mount is a memory regression, not just a time win. 1,006
+	 * files is boot plus one anonymous front-page render; admin, authenticated and Views
 	 * paths reach much further, and nothing was ever released, so a long-lived object
 	 * converges on the union of every route it has served: 11.4 MB blob + 1.26 MB index
 	 * + up to 39 MB inflated = ~52 MB, against the streaming mount's 39 MB. Warm-window
@@ -343,7 +344,7 @@ export async function mountDrupalLazy(
 			// a file PHP has written to is no longer reproducible from the blob
 			if (node.cfwDirty) continue;
 			// always present: `node` came out of `resident.keys()` two lines up
-			const bytes = resident.get(node) ?? 0;
+			const bytes = resident.get(node)!;
 			resident.delete(node);
 			node.contents = null;
 			node.cfwLoaded = false;
@@ -365,7 +366,7 @@ export async function mountDrupalLazy(
 	 * indistinguishable from an eagerly-written MEMFS file afterwards, so every other
 	 * FS operation -- seek, mmap, a second read -- needs no special case.
 	 *
-	 * THE WHOLE BODY IS MASKED, not just the inflate. This runs as a JS frame under
+	 * The whole body is masked, not just the inflate. This runs as a JS frame under
 	 * the PHP stack, so a slice interrupt firing anywhere inside it would try to
 	 * suspend a stack it cannot capture (src/mask.js). The raw enter/exit pair rather
 	 * than `withMask()` because this is the hot path -- 1,006 first reads during boot
@@ -373,13 +374,15 @@ export async function mountDrupalLazy(
 	 */
 	function materialise(node: LazyNode): void {
 		const e = node.cfwEntry;
+		// the ONLY idempotence guard: the four stream ops used to repeat it inline, which made
+		// four branches nothing could reach and left this one untested. Placed before maskEnter()
+		// so a warm read still costs no mask transition
 		if (!e || node.cfwLoaded) return;
 		maskEnter();
 		try {
-			// the entry names its own layer, so a modules-layer file inflates from the modules blob
-			const blob = blobs[e.__layer ?? 0];
-			if (!blob)
-				throw new Error(`entry ${e.p} names layer ${e.__layer} which was not fetched`);
+			// `blobs` and the merged index come from one `layerData`, so `__layer` indexes it
+			// (pinned in lazy-fs.spec.ts); defaulting to 0 would inflate another file silently
+			const blob = blobs[e.__layer!]!;
 			const member = blob.subarray(e.o, e.o + e.c);
 			node.contents = e.s
 				? member.slice()
@@ -409,7 +412,7 @@ export async function mountDrupalLazy(
 	// also intercept the database file and every file Drupal writes at runtime.
 	const lazyStreamOps = {
 		llseek(stream: LazyStream, offset: number, whence: number) {
-			if (!stream.node.cfwLoaded) materialise(stream.node);
+			materialise(stream.node);
 			let position = offset;
 			if (whence === 1) position += stream.position;
 			else if (whence === 2) position += stream.node.usedBytes;
@@ -423,7 +426,7 @@ export async function mountDrupalLazy(
 			length: number,
 			position: number
 		) {
-			if (!stream.node.cfwLoaded) materialise(stream.node);
+			materialise(stream.node);
 			return baseStreamOps.read(stream, buffer, offset, length, position);
 		},
 		write(
@@ -436,13 +439,13 @@ export async function mountDrupalLazy(
 		) {
 			// a write to a never-read file would otherwise land on empty contents and lose
 			// whatever the lazy member held
-			if (!stream.node.cfwLoaded) materialise(stream.node);
+			materialise(stream.node);
 			// the blob can no longer reproduce this node, so eviction must skip it forever
 			stream.node.cfwDirty = true;
 			return baseStreamOps.write(stream, buffer, offset, length, position, canOwn);
 		},
 		mmap(stream: LazyStream, length: number, position: number, prot: number, flags: number) {
-			if (!stream.node.cfwLoaded) materialise(stream.node);
+			materialise(stream.node);
 			return baseStreamOps.mmap(stream, length, position, prot, flags);
 		},
 		msync(
@@ -515,7 +518,8 @@ export async function mountDrupalLazy(
 		files: stats.files,
 		dirs: stats.dirs,
 		blobBytes: blobs.reduce((n, b) => n + b.length, 0),
-		layers: layers.map((l, i) => ({ name: l.name, bytes: blobs[i]?.length ?? 0 })),
+		// same length by construction: `blobs` is `layerData.map()` and `layerData` is `layers.map()`
+		layers: layers.map((l, i) => ({ name: l.name, bytes: blobs[i]!.length })),
 		dbBytes,
 		fetchMs: tFetch - t0,
 		nodeMs: Date.now() - tFetch,

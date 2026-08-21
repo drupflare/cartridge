@@ -1,7 +1,7 @@
 /**
  * The host half of the health layer: tripwires, the ledger, the breaker, quarantine.
  *
- * Every tripwire in this file corresponds to a defect this project has ALREADY SHIPPED and then
+ * Every tripwire in this file corresponds to a defect this project has already shipped and then
  * found. That is the selection criterion: a tripwire earns its place by having caught something
  * real. A check nobody has seen fire is decoration, so each one names its incident.
  *
@@ -86,7 +86,7 @@ export const LEDGER_MAX_ROWS = 500;
 /**
  * A 200 response with a zero-byte body.
  *
- * THIS SHIPPED. Destructing `theme.registry` on a persistent interpreter made render 1 return
+ * **This shipped.** Destructing `theme.registry` on a persistent interpreter made render 1 return
  * 12,304 bytes and every render after it return 0, while rows-written per render jumped 15 -> 85.
  * A cache cannot tell an empty 200 from a real page, so it stores and re-serves it. This is the
  * tripwire the whole "quarantine beats wrong output" rule exists for.
@@ -105,9 +105,9 @@ export function renderEmpty(obs: Observation): Finding | null {
 /**
  * A body whose length falls far outside the rolling median for its own path.
  *
- * THIS SHIPPED TOO, and it is the other half of the empty-body failure. A save that switched
+ * **This shipped too**, and it is the other half of the empty-body failure. A save that switched
  * `\Drupal::currentUser()` to uid 1 and never switched back rendered the front page as an admin:
- * 12,296 bytes became **90,038**, and that admin HTML was written to the ANONYMOUS page cache and
+ * 12,296 bytes became **90,038**, and that admin HTML was written to the anonymous page cache and
  * served to the next anonymous visitor. An information-disclosure bug from one unrestored global,
  * and its only outward symptom was the byte count.
  */
