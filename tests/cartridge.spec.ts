@@ -16,7 +16,7 @@ import { fromUtf8, toUtf8 } from '../src/util.js';
 /**
  * `createCartridge()`, driven over a fake interpreter.
  *
- * A FAKE INTERPRETER IS THE RIGHT INSTRUMENT HERE, and it is worth saying why rather than treating it
+ * A fake interpreter is the right instrument here, and it is worth saying why rather than treating it
  * as a compromise. What this file is testing is the WIRING -- that every entry is serialised, that a
  * host callback runs masked, that the script lands in the filesystem before `callMain` is entered,
  * that the mask is back to depth 0 afterwards. None of that is a property of any particular wasm
@@ -498,7 +498,7 @@ describe('createCartridge: instantiate failures', () => {
 				expect.unreachable('a module with no { FS, callMain } cannot be driven');
 			} catch (error) {
 				expect((error as InterpreterError).code).toBe('interpreter.no_entry_point');
-				// the message has to say what to do, because this is a BUILD FLAG problem
+				// the message has to say what to do, because this is a build-flag problem
 				expect((error as Error).message).toContain('callMain');
 			}
 		}

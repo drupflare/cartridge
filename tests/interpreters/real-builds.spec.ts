@@ -6,7 +6,7 @@ import { toBytes } from '../../src/util.js';
 /**
  * Real wasm interpreter builds, driven through `createCartridge()` for real.
  *
- * `tests/recipes.spec.ts` proves the ADAPTER SHAPE over stand-in
+ * `tests/recipes.spec.ts` proves the adapter shape over stand-in
  * modules, and it says so in its own docblock: a green result there is evidence about the interface,
  * never about a binary. This file is the only thing that puts a real binary behind a claim, and
  * ADVANCED_USAGE.md's status table is defined by it: a language is Verified when a test HERE drives
@@ -18,12 +18,12 @@ import { toBytes } from '../../src/util.js';
  * php-wasm's `PhpNode` statically imports `node:fs` to locate a 12.6 MB build in its own package
  * directory. None of that is reachable from inside workerd, and workerd additionally blocks
  * request-time wasm codegen, which is why `drupflare/worker` ships its binary as a module-scope
- * import. So what this lane proves is that a real build SATISFIES THE CONTRACT this package defines
+ * import. So what this lane proves is that a real build satisfies the contract this package defines
  * -- `{ FS, callMain }`, a script written into the interpreter's own filesystem, output collected
  * off `print` -- and not that any of these five fits in a Worker. ADVANCED_USAGE.md states that
  * split per recipe.
  *
- * WHAT THE FIVE ACTUALLY MEASURED, which is a finding about the contract's generality rather than
+ * What the five actually measured, which is a finding about the contract's generality rather than
  * about any one build:
  *
  * | build                     | FS                          | callMain     |
@@ -119,7 +119,7 @@ const rubyWasmPath = ((): string | null => {
 /**
  * Compiles wasm bytes.
  *
- * `WebAssembly.compile` is ABSENT FROM `@cloudflare/workers-types` on purpose -- workerd blocks
+ * `WebAssembly.compile` is absent from `@cloudflare/workers-types` on purpose -- workerd blocks
  * request-time codegen, and `Module` is declared abstract there to say so. The cast is local rather
  * than an ambient widening so that guard keeps holding for `src/`; this lane runs under node.
  */
@@ -134,11 +134,8 @@ const missing = [
 	...(rubyWasmPath === null ? [RUBY_WASM] : [])
 ];
 
-// A MISSING INTERPRETER MUST NOT SILENTLY PASS THIS FILE. A working copy with a partial
-// node_modules should not see red, but a CI run that skipped the only place a real build is ever
-// driven is indistinguishable from one that verified every build -- and the labels in
-// ADVANCED_USAGE.md are the whole value of that document. Same rule
-// `worker/tests/node/php-fragments.spec.ts` follows when `php` is missing and CI is set.
+// a CI run that skipped the only place a real build is driven is indistinguishable from one
+// that verified every build, and ADVANCED_USAGE.md's labels rest on this lane having run
 if (missing.length > 0 && process.env.CI) {
 	throw new Error(
 		`not installed and CI is set: ${missing.join(', ')}. The interpreter verification would ` +
@@ -169,7 +166,7 @@ describe.skipIf(loaded.get('wasmoon') === null)('Lua 5.4, via wasmoon', () => {
 	/**
 	 * The adapter, and the two things it says about the contract.
 	 *
-	 * `FS` IS THE BUILD'S OWN. `wasm.module.FS` is the real emscripten MEMFS, so `cartridge.run()`
+	 * `FS` is the build's own: `wasm.module.FS` is the real emscripten MEMFS, so `cartridge.run()`
 	 * writes the script through `mountRecord()` into the interpreter's actual filesystem and Lua
 	 * reads it back with `luaL_loadfilex`. Nothing is faked on that path.
 	 *
@@ -614,19 +611,19 @@ describe.skipIf(loaded.get('php-wasm/PhpNode') === null)('PHP 8.3, via php-wasm'
 	/**
 	 * The language this package was extracted from, driven through a build nobody here compiled.
 	 *
-	 * `FS` IS THE BUILD'S OWN, and it is the complete emscripten one with `utime`. `callMain` is not
+	 * `FS` is the build's own, and it is the complete emscripten one with `utime`. `callMain` is not
 	 * exported, so the adapter enters through `pib_run` -- php-wasm's own entry point -- with a
 	 * `require` of the path `cartridge.run()` wrote. PHP opens and compiles that file out of its own
 	 * filesystem; nothing is handed to it as a string.
 	 *
-	 * TWO ADAPTER OBLIGATIONS THE OTHER FOUR DO NOT HAVE.
+	 * Two adapter obligations the other four do not have.
 	 *
-	 * OUTPUT ARRIVES AS BYTES. php-wasm pipes emscripten's stdout into an `OutputBuffer` that fires an
+	 * Output arrives as bytes. php-wasm pipes emscripten's stdout into an `OutputBuffer` that fires an
 	 * `output` event per newline with the newline still attached, so the adapter strips it and calls
 	 * `flush()` after every run. Skip the flush and a last line with no trailing newline stays in the
 	 * byte buffer and reappears glued to the FRONT of the next run's first line.
 	 *
-	 * FATALS DO NOT REACH STDERR BY DEFAULT. `display_errors = stderr` is a CLI-SAPI setting and this
+	 * Fatals do not reach stderr by default: `display_errors = stderr` is a CLI-SAPI setting and this
 	 * build is `embed`, so the fatal lands on stdout and corrupts `result.json()`. Measured: with
 	 * `display_errors = 1` an uncaught `RuntimeException` writes six lines to `print`. `log_errors`
 	 * with `error_log = /dev/stderr` is the route that reaches `printErr`.

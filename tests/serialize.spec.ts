@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Gate, doGate } from '../src/serialize.js';
 
 /**
- * FIRST PORTED SUITE, and it exists to establish the pattern for the other nine.
+ * First ported suite; it establishes the pattern for the other nine.
  *
  * It replaces `scripts/test-serialize.mjs` (14 hand-rolled assertions) and runs INSIDE
  * workerd through `@cloudflare/vitest-pool-workers`, which is the whole reason to move:

@@ -181,7 +181,7 @@ describe('evaluateCanary: the verdict and its control', () => {
 		expect(good.reconciles).toBe(true);
 	});
 
-	// THE CONTROL. If attribution moved back to the originating invocation, the parker would
+	// the control: if attribution moved back to the originating invocation, the parker would
 	// be charged and the resumer would be cheap -- the shape that kills slicing.
 	it('FAILS when attribution moves to the originating invocation', () => {
 		const moved = evaluateCanary({ park: 90, resume: 3, oneshot: 93 });

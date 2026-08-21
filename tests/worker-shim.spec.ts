@@ -3,13 +3,13 @@ import { beforeAll, describe, expect, it } from 'vitest';
 /**
  * The shim, which is the one module in this package with a side effect.
  *
- * IT HAS TO BE IMPORTED FOR ITS EFFECT, before the emscripten glue evaluates, so the spec imports it
+ * It has to be imported for its effect, before the emscripten glue evaluates, so the spec imports it
  * the same way a consumer does -- `import '../src/worker-shim.js'` -- rather than pulling named
  * exports out of it. That is also why `package.json` lists it in `sideEffects` instead of declaring
  * the package side-effect-free: a bundler that tree-shook this file away would delete the fix and
  * leave the failure it closes.
  *
- * WHAT IT CLOSES IS A DENIAL-OF-SERVICE SURFACE, not a nuisance. The php-wasm glue contains two
+ * What it closes is a denial-of-service surface, not a nuisance. The php-wasm glue contains two
  * `Asyncify.handleAsync(...)` call sites and declares `Asyncify` nowhere, so it is a free identifier
  * that `ASYNCIFY=0` compiled out. Reaching either one threw `ReferenceError: Asyncify is not
  * defined` from inside a wasm import, which PHP cannot catch at all -- measured twice, from two

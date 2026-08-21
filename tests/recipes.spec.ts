@@ -6,8 +6,7 @@ import { createMemoryFS, type MountFS } from '../src/mount.js';
 /**
  * One spec per recipe in ADVANCED_USAGE.md.
  *
- * WHAT THESE PROVE AND WHAT THEY DO NOT, because the distinction is the whole reason the file has
- * this docblock. Each `it` below drives the ADAPTER SHAPE a recipe documents -- the code a consumer
+ * What these prove and what they do not. Each `it` below drives the adapter shape a recipe documents -- the code a consumer
  * writes between their wasm module and `createCartridge()` -- over a stand-in module. So a recipe
  * whose adapter is wrong cannot pass here, and a doc snippet cannot drift from the API without
  * turning this file red.

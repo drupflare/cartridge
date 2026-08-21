@@ -22,6 +22,18 @@ export default defineConfig({
 				}
 			},
 			{
+				// what workerd cannot do, minus the wasm the interpreters project downloads: this
+				// one is in the gate and in coverage, so a spec parked here is still measured
+				test: {
+					name: 'node',
+					include: ['tests/node/*.spec.ts'],
+					environment: 'node',
+					// matched to the unit project: vitest refuses two projects that differ on it
+					// without a distinct sequence.groupOrder
+					maxWorkers: process.env.CI ? 1 : 2
+				}
+			},
+			{
 				test: {
 					name: 'interpreters',
 					include: ['tests/interpreters/*.spec.ts'],

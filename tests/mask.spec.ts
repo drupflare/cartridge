@@ -311,7 +311,7 @@ describe('the dev assertion: suspension never above depth 0', () => {
 		expect(m.assertSuspendable()).toBe(true);
 	});
 
-	// THE CONTROL, and the trap. The C handler masks itself for the duration of its own
+	// the control, and the trap: the C handler masks itself for the duration of its own
 	// yield, so stat(4) reads 1 at exactly the moment suspension is legal; asserting on the
 	// C mask instead of the host depth would trip on every single slice.
 	it('does NOT trip on the C mask, which reads 1 inside the handler', () => {

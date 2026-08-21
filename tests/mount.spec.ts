@@ -13,7 +13,7 @@ import { toUtf8 } from '../src/util.js';
 /**
  * The mount surface, driven over a fake MEMFS.
  *
- * A FAKE FS, AND THE FAKE IS THE INSTRUMENT. What every function here does is make a sequence of
+ * A fake FS, and the fake is the instrument. What every function here does is make a sequence of
  * `mkdir`/`writeFile`/`utime` calls, and the sequence IS the behaviour -- emscripten has no
  * `mkdir -p`, so a missing parent is an `ENOENT` at write time rather than at mount time, and the
  * fake reproduces exactly that so an unordered mount fails here.

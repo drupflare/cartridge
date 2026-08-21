@@ -10,11 +10,12 @@ import * as serializeModule from '../src/serialize.js';
 import * as supervisorModule from '../src/supervisor.js';
 import * as tailModule from '../src/tail-worker.js';
 import * as utilModule from '../src/util.js';
+import configSource from '../vitest.config.ts?raw';
 
 /**
  * The subpath map, checked against the modules it names.
  *
- * WHY THIS IS A TEST AND NOT A REVIEW ITEM. An `exports` map is the one part of a package that
+ * A test and not a review item, because an `exports` map is the one part of a package that
  * nothing else in the repo reads: `tsc` resolves relative specifiers, vitest resolves relative
  * specifiers, and the map is only exercised the first time a CONSUMER installs the package. So a
  * typo in it is invisible until publication, which is the worst possible moment. This spec closes
@@ -79,26 +80,52 @@ describe('the package exports map', () => {
 	});
 
 	it('keeps the runtime dependencies to the two synchronous decompressors', () => {
-		// the count is a promise the README makes; a THIRD one arriving unnoticed is what this pins.
-		// both are here for the same reason and neither substitutes for the other: fflate inflates
-		// a lazy mount inside a synchronous open() from wasm, fzstd inflates the interpreter at
-		// module scope, and fflate has no zstd while deflate is gzip's own algorithm and so wins
-		// nothing against a meter that already gzips
+		// the count is a promise the README makes, and neither substitutes for the other: fflate
+		// has no zstd, and deflate wins nothing against a meter that already gzips
 		expect(Object.keys(pkg.dependencies)).toEqual(['fflate', 'fzstd']);
 	});
 });
 
-describe('the two test lanes', () => {
+describe('the three test lanes', () => {
 	/**
-	 * WHY package.json AND NOT vitest.config.ts. The config imports
-	 * `@cloudflare/vitest-pool-workers`, which cannot load inside workerd, so this lane cannot read
-	 * it. The scripts are the part a human runs and CI runs, and they are the part that rots.
+	 * Read from package.json and not the evaluated vitest.config.ts: the config imports
+	 * `@cloudflare/vitest-pool-workers`, which cannot load inside workerd, so this lane cannot
+	 * execute it -- but `?raw` reads it as text, which is enough to enumerate its projects. The
+	 * scripts are the part a human runs and CI runs, and they are the part that rots.
 	 */
-	it('keeps the gate on the unit project alone', () => {
+	it('keeps the gate off the interpreters project', () => {
 		// a bare `vitest run` would drag the interpreters project into every gate, and that project
 		// carries ~296 MB of wasm across six devDependencies
 		expect(pkg.scripts.test).toContain('--project=unit');
+		expect(pkg.scripts.test).not.toContain('--project=interpreters');
 		expect(pkg.scripts['test:coverage']).toContain('--project=unit');
+	});
+
+	it('runs EVERY project it declares, so no suite can be silently unmeasured', () => {
+		/**
+		 * The defect this pins shipped in a sibling repo and cost a wrong verdict: a coverage
+		 * runner that executed one suite of three reported two files at 0% that had passing tests
+		 * all along. Here the same shape was `zstdDecoderFromWasm`, tested only in a project
+		 * `test:coverage` never selected.
+		 */
+		const declared = [...configSource.matchAll(/name:\s*'([a-z]+)'/g)].map((m) => m[1]!);
+		expect(declared.sort()).toEqual(['interpreters', 'node', 'unit']);
+		const scripts = pkg.scripts as Record<string, string>;
+		for (const name of declared) {
+			const runners = Object.entries(scripts)
+				.filter(([key]) => key.startsWith('test'))
+				.filter(([, command]) => command.includes(`--project=${name}`))
+				.map(([key]) => key);
+			expect(runners, `no test script runs --project=${name}`).not.toEqual([]);
+		}
+	});
+
+	it('measures every project the gate runs, so the gate and coverage cannot diverge', () => {
+		// interpreters is deliberately outside both; every other project has to be in both
+		for (const name of ['unit', 'node']) {
+			expect(pkg.scripts.test).toContain(`--project=${name}`);
+			expect(pkg.scripts['test:coverage']).toContain(`--project=${name}`);
+		}
 	});
 
 	it('gives the real-build verification its own script', () => {
@@ -117,7 +144,7 @@ describe('the two test lanes', () => {
 		'php-wasm'
 	])('pins %s as a devDependency, where renovate can see it', (name) => {
 		/**
-		 * WHY THE PIN LIVES IN package.json AND NOWHERE ELSE. A version inside a shell script, a
+		 * The pin lives in package.json and nowhere else. A version inside a shell script, a
 		 * curl URL or a workflow `env:` is invisible to renovate's built-in managers, so it never
 		 * gets a bump PR and rots silently until a recipe breaks. `edgeport` solves the same
 		 * problem the same way for its integration servers -- every image pinned to a tag and a

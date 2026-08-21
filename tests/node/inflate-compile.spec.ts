@@ -68,4 +68,27 @@ describe('zstdDecoderFromWasm', () => {
 		const empty = EMPTY_MODULE();
 		expect(() => zstdDecoderFromWasm(empty)).toThrow(/not a decoder this can drive/);
 	});
+
+	it('reports a module that will not link as decoder-broken, not as incomplete', () => {
+		// a module importing `e.f`, which the one stubbed import (env.emscripten_notify_memory_
+		// growth) does not satisfy, so WebAssembly.Instance throws a LinkError. Hand-assembled
+		// because every real decoder links, and the two failures need telling apart: one means
+		// "wrong wasm", the other means "right wasm, wrong build"
+		const needsImport = new WasmModule(
+			// prettier-ignore
+			new Uint8Array([
+				0, 97, 115, 109, 1, 0, 0, 0,
+				1, 4, 1, 0x60, 0, 0,
+				2, 7, 1, 1, 101, 1, 102, 0, 0
+			])
+		);
+		try {
+			zstdDecoderFromWasm(needsImport);
+			expect.unreachable('the import is unsatisfied');
+		} catch (error) {
+			expect(error).toBeInstanceOf(InterpreterError);
+			expect((error as InterpreterError).code).toBe('inflate.decoder-broken');
+			expect((error as Error).message).toMatch(/did not instantiate/);
+		}
+	});
 });
