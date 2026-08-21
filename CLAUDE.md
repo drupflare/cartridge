@@ -169,17 +169,25 @@ instrument was wrong, not the system.
 
 ```sh
 bun run typecheck
-bun run test # 305 assertions across 12 specs, in workerd
+bun run test # 375 assertions across 14 specs, in workerd and node
 bun run test:coverage
-bun run test:interpreters # 33 assertions against real wasm builds, in node
+bun run test:interpreters # against real wasm builds, in node
 bunx prettier --check .
 ```
 
-**Two vitest projects, and `bun run test` is the `unit` one alone.** `interpreters` runs under node
+**Three vitest projects, and `bun run test` is `unit` plus `node`.** `interpreters` runs under node
 because wasmoon, Pyodide, quickjs-emscripten, ruby.wasm and php-wasm each reach for their own wasm
 off disk and none of that is reachable from workerd; php-wasm's `PhpNode` also statically imports
-`node:fs`. `tests/exports.spec.ts` pins both scripts, because a bare `vitest run` would drag ~296 MB
-of wasm into every gate.
+`node:fs`. A bare `vitest run` would drag ~296 MB of wasm into every gate, so the gate names its
+projects.
+
+**`node` exists because a project the coverage runner never selects reads as untested code.**
+`tests/node/inflate-compile.spec.ts` was under `tests/interpreters/`, which `test:coverage` does not
+run, so `zstdDecoderFromWasm` reported 0 lines covered while having passing tests -- the same shape
+that produced two false 0% verdicts in the `rom` sibling. It needs node only for wasm codegen, not
+for an interpreter download, so it belongs in a lane the gate and coverage both run.
+`tests/exports.spec.ts` now enumerates the projects out of `vitest.config.ts?raw` and fails when one
+of them is in no `test*` script, or when a gated project is missing from `test:coverage`.
 
 **Every interpreter is a pinned `devDependency`, and that placement is the point.** It is the only
 place renovate's npm manager can see a version; one buried in a shell script or a workflow `env:`
