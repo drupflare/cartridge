@@ -1,6 +1,6 @@
 {
 	"name": "@drupflare/cartridge",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"type": "module",
 	"description": "Run a blocking wasm interpreter inside a Cloudflare Durable Object",
 	"main": "./src/index.ts",
@@ -30,9 +30,9 @@
 	],
 	"scripts": {
 		"typecheck": "tsc -p tsconfig.json --noEmit",
-		"test": "vitest run --project=unit",
-		"test:watch": "vitest --project=unit",
-		"test:coverage": "vitest run --project=unit --coverage",
+		"test": "vitest run --project=unit --project=node",
+		"test:watch": "vitest --project=unit --project=node",
+		"test:coverage": "vitest run --project=unit --project=node --coverage",
 		"test:interpreters": "vitest run --project=interpreters",
 		"prettier": "prettier --write .",
 		"prettier:check": "prettier --check .",
