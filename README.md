@@ -420,7 +420,7 @@ a green spec.
 
 ```sh
 bun run typecheck
-bun run test # 305 assertions across 12 specs, in workerd
+bun run test # in workerd
 bun run test:coverage
 bun run test:interpreters # 33 assertions against real wasm builds, in node
 ```
