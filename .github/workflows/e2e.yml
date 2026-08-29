@@ -48,7 +48,7 @@ jobs:
           const r = await file.json();
           const skipped = r.numPendingTests + r.numTodoTests;
           const dev = (await Bun.file("package.json").json()).devDependencies;
-          const names = ["php-wasm", "wasmoon", "pyodide", "quickjs-emscripten", "@ruby/wasm-wasi", "@ruby/3.4-wasm-wasi", "@bjorn3/browser_wasi_shim"];
+          const names = ["php-wasm", "wasmoon", "pyodide", "quickjs-emscripten", "@ruby/wasm-wasi", "@ruby/3.4-wasm-wasi", "@bjorn3/browser_wasi_shim", "@gmitch215/bytebox"];
           console.log("### Interpreter recipes verified against real builds\n");
           console.log("| package | version |\n| ------- | ------- |");
           for (const name of names) console.log(`| ${name} | ${dev[name]} |`);
