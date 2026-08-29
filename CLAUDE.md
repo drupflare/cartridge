@@ -9,10 +9,9 @@ the mount, and every raw piece stays exported for a caller who needs to drive th
 
 ## Status
 
-**Publish-ready, not published.** `package.json` is `@drupflare/cartridge@0.1.0` with subpath exports
-and an honest `sideEffects` array. `release.yml` now tags, releases AND runs
-`npm publish --access public --provenance`, so a release is the whole release rather than half of it.
-The release sequence is maintainer-only.
+**Published.** `@drupflare/cartridge@0.1.3` is on npm, with subpath exports and an honest
+`sideEffects` array. `release.yml` tags, releases and publishes to npm and to GitHub Packages, so a
+release is the whole release rather than half of it. The release sequence is maintainer-only.
 
 **`NPM_TOKEN` has to exist as a repository secret** or the publish job stops at "Check the Token Is
 Present" with a named error. That guard is loud rather than skipping on purpose: npm has no
@@ -20,6 +19,16 @@ tag-driven mechanism the way Packagist does, so a release that quietly skips the
 version that exists on GitHub and nowhere a consumer can install it. `registry-url` on the
 `setup-node` step is what makes `NODE_AUTH_TOKEN` readable at all - without it the publish runs
 anonymously and npm answers **404**, not 401, which is the most misread error in the process.
+
+**The GitHub Packages half was silently broken by the same mechanism, one host over.** `setup-node`
+writes ONE host-scoped credential line, `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`, and
+npm matches `_authToken` by registry host. So `npm publish --registry https://npm.pkg.github.com`
+carried no credential no matter what `NODE_AUTH_TOKEN` was set to in that step's `env`, and the
+result was swallowed by a `||` that reported every failure as "most likely already present" and
+exited 0. There is now a second `setup-node` with `registry-url: https://npm.pkg.github.com` and
+`scope: '@drupflare'`, an existence check symmetric with the npm one, and a bare `npm publish` that
+is allowed to fail the job. **Never route a publish at another registry with `--registry` alone**;
+give that host its own `setup-node`, and never wrap a publish in `||`.
 
 `drupflare/durabledb` consumes it today through two `paths` entries in its `tsconfig.json` and two
 matching `resolve.alias` entries in its `vitest.config.ts`, pointing at this working copy. **Both sets
