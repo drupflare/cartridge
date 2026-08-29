@@ -34,8 +34,16 @@ export interface InterpreterIo {
 export interface Interpreter {
 	/** the emscripten FS object; a cartridge writes scripts and mounts through this */
 	FS: MountFS;
-	/** runs `main(argc, argv)` and returns its exit status */
-	callMain(argv: string[]): number | void;
+	/**
+	 * runs `main(argc, argv)` and returns its exit status
+	 *
+	 * May answer a promise. An emscripten build returns a number synchronously, but an adapter over
+	 * an ahead-of-time compiled program has work to finish after `main` returns -- a Java thread on
+	 * WasmGC is a fiber on the host queue, and draining it is asynchronous. Narrowing this to a
+	 * number would make that adapter drop the drain result and report 0 for a run that never
+	 * finished, which is the interleave this package exists to prevent.
+	 */
+	callMain(argv: string[]): number | void | Promise<number | void>;
 }
 
 /** the options `createCartridge()` takes; everything but `instantiate` has a default */
@@ -338,7 +346,11 @@ export function createCartridge(options: CartridgeOptions): Cartridge {
 	}
 
 	/** the one place `callMain` is entered, always inside the gate and never inside the mask */
-	function execute(interpreter: Interpreter, path: string, argv: string[]): RunResult {
+	async function execute(
+		interpreter: Interpreter,
+		path: string,
+		argv: string[]
+	): Promise<RunResult> {
 		outChunks = [];
 		errChunks = [];
 		let status = 0;
@@ -346,7 +358,9 @@ export function createCartridge(options: CartridgeOptions): Cartridge {
 			// NOT masked. The mask exists to hold the interrupt off across a HOST call that puts a JS
 			// frame under the interpreter; the interpreter's own execution is the stack the slice is
 			// supposed to be able to interrupt, so masking here would silently disable slicing
-			status = Number(interpreter.callMain(argv) ?? 0);
+			// awaited inside the try, so an adapter whose drain rejects lands in the catch below
+			// rather than as an unhandled rejection outside the gate
+			status = Number((await interpreter.callMain(argv)) ?? 0);
 		} catch (cause) {
 			// emscripten throws ExitStatus for a nonzero exit(); anything else is a real fault
 			const exitStatus = (cause as { status?: unknown } | null)?.status;
