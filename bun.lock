@@ -12,6 +12,7 @@
         "@bjorn3/browser_wasi_shim": "^0.4.2",
         "@cloudflare/vitest-pool-workers": "^0.22.0",
         "@cloudflare/workers-types": "^5.20260811.1",
+        "@gmitch215/bytebox": "^1.0.0",
         "@ruby/3.4-wasm-wasi": "^2.10.1",
         "@ruby/wasm-wasi": "^2.10.1",
         "@vitest/coverage-istanbul": "^4.1.0",
@@ -141,6 +142,8 @@
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.28.1", "", { "os": "win32", "cpu": "x64" }, "sha512-bm4Mowrv+GXMlpWX++EcXw/iLyd1o3+bJkC2DkWXYVvgZCqD/bSj9ctZeAMC3cIxgjRVR2Dufaiu4YPxr5gW1A=="],
 
     "@gerrit0/mini-shiki": ["@gerrit0/mini-shiki@3.23.0", "", { "dependencies": { "@shikijs/engine-oniguruma": "^3.23.0", "@shikijs/langs": "^3.23.0", "@shikijs/themes": "^3.23.0", "@shikijs/types": "^3.23.0", "@shikijs/vscode-textmate": "^10.0.2" } }, "sha512-bEMORlG0cqdjVyCEuU0cDQbORWX+kYCeo0kV1lbxF5bt4r7SID2l9bqsxJEM0zndaxpOUT7riCyIVEuqq/Ynxg=="],
+
+    "@gmitch215/bytebox": ["@gmitch215/bytebox@1.0.0", "", { "peerDependencies": { "esbuild": ">=0.20.0", "typescript": ">=5.4.0" }, "optionalPeers": ["esbuild", "typescript"], "bin": { "bytebox-bindgen": "dist/bin/bindgen.js" } }, "sha512-r4HV7DBH1x5+Kx7FUdl60Z8I0s4BEcsRodFfSDoA6E+hGt4dkYkLr7BcHbM7HOhjGDXU76RPDJ3rrMu6rJFTWA=="],
 
     "@img/colour": ["@img/colour@1.1.0", "", {}, "sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ=="],
 

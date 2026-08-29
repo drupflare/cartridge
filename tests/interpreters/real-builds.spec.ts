@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createCartridge, type Interpreter } from '../../src/cartridge.js';
+import { createCartridge, type Interpreter, type InterpreterIo } from '../../src/cartridge.js';
 import { createMemoryFS, type FileMap, type MountFS } from '../../src/mount.js';
 import { toBytes } from '../../src/util.js';
 
@@ -71,7 +71,8 @@ const REQUIRED = [
 	'quickjs-emscripten',
 	'@ruby/wasm-wasi',
 	'@bjorn3/browser_wasi_shim',
-	'php-wasm/PhpNode'
+	'php-wasm/PhpNode',
+	'@gmitch215/bytebox'
 ] as const;
 
 const loaded = new Map<string, Record<string, unknown> | null>();
@@ -131,7 +132,9 @@ function compileWasm(bytes: Uint8Array): Promise<WebAssembly.Module> {
 
 const missing = [
 	...REQUIRED.filter((name) => loaded.get(name) === null),
-	...(rubyWasmPath === null ? [RUBY_WASM] : [])
+	...(rubyWasmPath === null ? [RUBY_WASM] : []),
+	// two describes skip on this rather than on a package, so the guard has to see it too
+	...(nodeFs === null ? ['node:fs/promises'] : [])
 ];
 
 // a CI run that skipped the only place a real build is driven is indistinguishable from one
@@ -758,6 +761,155 @@ describe.skipIf(loaded.get('php-wasm/PhpNode') === null)('PHP 8.3, via php-wasm'
 	});
 });
 
+describe.skipIf(loaded.get('@gmitch215/bytebox') === null || nodeFs === null)(
+	'Java, via bytebox',
+	() => {
+		/**
+		 * The one language here whose wasm does not ship inside the package.
+		 *
+		 * bytebox is a toolchain rather than an interpreter: a Gradle build compiles Java to WebAssembly
+		 * through TeaVM and the npm package is the loader that runs the result. So there is no binary in
+		 * `node_modules` to reach for, and the lane carries its own -- `tests/fixtures/java.wasm`, built
+		 * from `Cartridge.java` beside it. That is also what makes Java the only row here that says something
+		 * about a Worker: the other five read a multi-megabyte build off disk, and this one is 19 KB
+		 * because the program is the only thing in it.
+		 *
+		 * `FS` is cartridge's own `createMemoryFS()`. TeaVM emits no emscripten runtime and therefore no
+		 * filesystem at all, so unlike the other five there is nothing of the build's to hand over. The
+		 * compiled program reads back through a module the adapter supplies under a name the Java source
+		 * imported -- `@JSBodyImport(fromModule = "cartridge:fs")` -- which is the seam bytebox's
+		 * `load({ modules })` exists for. Nothing resolves that specifier on disk.
+		 *
+		 * `callMain` IS NOT exported, which is now five of six builds. `main` is, so the adapter calls it
+		 * and then drains: a Java thread on this target is a fiber on the host queue, and work the
+		 * program queued has not run when `main` returns.
+		 *
+		 * The collectors are rebound per instantiate rather than passed to `load`, because the module has
+		 * to be compiled before `createCartridge()` hands them over, and on a Worker that compile may only
+		 * happen during module evaluation.
+		 */
+		const FS_MODULE = 'cartridge:fs';
+
+		async function javaCartridge(files?: FileMap) {
+			const { load } = loaded.get('@gmitch215/bytebox') as unknown as ByteboxLike;
+			const runtime = await import('../fixtures/java.wasm-runtime.js');
+			const readFile = nodeFs as unknown as { readFile(p: URL): Promise<Uint8Array> };
+			const bytes = await readFile.readFile(new URL('../fixtures/java.wasm', HERE));
+
+			const fs = createMemoryFS();
+			let io: InterpreterIo | undefined;
+			const module = load({
+				runtime,
+				bytes,
+				print: (line) => io?.print(line),
+				printErr: (line) => io?.printErr(line),
+				// the reading half only; a compiled program has no business writing the script back
+				modules: { [FS_MODULE]: { readText: (path: string) => fs.readText(path) ?? null } }
+			});
+
+			return createCartridge({
+				instantiate: (collectors): Interpreter => {
+					io = collectors;
+					return {
+						FS: fs,
+						callMain: async (argv: string[]): Promise<number> => {
+							try {
+								module.call('main', argv);
+								// awaited, not `drain()`: work `main` queued has not run when it returns,
+								// and a fiber waiting on a promise is only reachable asynchronously
+								const drain = await module.drainAsync();
+								if (!drain.drained) {
+									collectors.printErr(
+										`${drain.pending} fiber(s) still queued after main`
+									);
+									return 1;
+								}
+								return 0;
+							} catch (cause) {
+								// a JVM prints an uncaught throwable to stderr and exits 1
+								collectors.printErr(`Exception in thread "main" ${String(cause)}`);
+								return 1;
+							}
+						}
+					};
+				},
+				scriptName: 'main.txt',
+				argv: (path) => ['java', path],
+				files
+			});
+		}
+
+		it('exports main and not callMain, so the adapter supplies one', async () => {
+			const { load } = loaded.get('@gmitch215/bytebox') as unknown as ByteboxLike;
+			const runtime = await import('../fixtures/java.wasm-runtime.js');
+			const readFile = nodeFs as unknown as { readFile(p: URL): Promise<Uint8Array> };
+			const module = load({
+				runtime,
+				bytes: await readFile.readFile(new URL('../fixtures/java.wasm', HERE)),
+				modules: { [FS_MODULE]: { readText: () => null } }
+			});
+
+			expect(typeof module.exports['main']).toBe('function');
+			expect(module.exports['callMain']).toBeUndefined();
+		});
+
+		it('runs a script cartridge wrote, read back through the supplied module', async () => {
+			const cartridge = await javaCartridge();
+			const result = await cartridge.run('from the cartridge');
+
+			expect(result.status).toBe(0);
+			expect(result.path).toBe('/cartridge/main.txt');
+			expect(result.firstLine()).toBe('argv:java,/cartridge/main.txt');
+			expect(result.lastLine()).toBe('read:from the cartridge');
+		});
+
+		it('reads back a file writeJson put there, so the FS round-trips', async () => {
+			const cartridge = await javaCartridge();
+			await cartridge.writeJson('input.json', { items: [1, 2, 3] });
+
+			// the program prints whatever it read, so the encoded JSON comes back as the line
+			const result = await cartridge.runFile('/cartridge/input.json');
+
+			expect(result.status).toBe(0);
+			expect(result.lastLine()).toBe('read:{"items":[1,2,3]}');
+		});
+
+		it('mounts a file at boot that a later run reads', async () => {
+			const cartridge = await javaCartridge({ 'helper.txt': 'mounted at boot' });
+			const result = await cartridge.runFile('/cartridge/helper.txt');
+
+			expect(result.status).toBe(0);
+			expect(result.lastLine()).toBe('read:mounted at boot');
+		});
+
+		it('answers null for a path nothing wrote rather than failing the run', async () => {
+			const cartridge = await javaCartridge();
+			const result = await cartridge.runFile('/never-written');
+
+			expect(result.status).toBe(0);
+			expect(result.lastLine()).toBe('read:null');
+		});
+
+		it('reports an uncaught Java exception as a status, the way a JVM exits 1', async () => {
+			const cartridge = await javaCartridge();
+			const result = await cartridge.run('throw please');
+
+			expect(result.status).toBe(1);
+			expect(result.stderrText).toContain('Exception in thread "main"');
+			expect(() => result.assertOk()).toThrow(/exited 1/);
+		});
+
+		it('leaves the mask at depth 0, one enter per line', async () => {
+			const cartridge = await javaCartridge();
+			await cartridge.run('two lines');
+			const stats = cartridge.stats();
+
+			expect(stats.mask.depth).toBe(0);
+			expect(stats.mask.enters).toBe(2);
+		});
+	}
+);
+
 /** the sliver of wasmoon this file touches; the package's own types are not installed for `tsc` */
 interface LuaFactoryLike {
 	getLuaModule(): Promise<{ module: { FS: Record<string, unknown> } }>;
@@ -860,4 +1012,19 @@ interface RubyVMStatic {
 			initialize(i: WebAssembly.Instance): void;
 		};
 	}): Promise<{ vm: { eval(source: string): unknown } }>;
+}
+
+/** the sliver of bytebox this file touches */
+interface ByteboxLike {
+	load(options: {
+		runtime: unknown;
+		bytes: Uint8Array;
+		print?(line: string): void;
+		printErr?(line: string): void;
+		modules?: Record<string, unknown>;
+	}): {
+		readonly exports: Record<string, unknown>;
+		call(name: string, ...args: unknown[]): unknown;
+		drainAsync(): Promise<{ drained: boolean; pending: number }>;
+	};
 }
