@@ -9,7 +9,7 @@ the mount, and every raw piece stays exported for a caller who needs to drive th
 
 ## Status
 
-**Published.** `@drupflare/cartridge@0.1.3` is on npm, with subpath exports and an honest
+**Published.** `@drupflare/cartridge@0.2.0` is on npm, with subpath exports and an honest
 `sideEffects` array. `release.yml` tags, releases and publishes to npm and to GitHub Packages, so a
 release is the whole release rather than half of it. The release sequence is maintainer-only.
 
@@ -30,10 +30,12 @@ exited 0. There is now a second `setup-node` with `registry-url: https://npm.pkg
 is allowed to fail the job. **Never route a publish at another registry with `--registry` alone**;
 give that host its own `setup-node`, and never wrap a publish in `||`.
 
-`drupflare/durabledb` consumes it today through two `paths` entries in its `tsconfig.json` and two
-matching `resolve.alias` entries in its `vitest.config.ts`, pointing at this working copy. **Both sets
-must be deleted the moment this publishes** - an alias silently wins over `node_modules`. `durabledb`
-is green: `bun run typecheck` clean, 87 assertions passing.
+`drupflare/durabledb` consumes `./gate` and `./mask` from the registry at `^0.2.0`, with no `paths`
+mapping and no `resolve.alias` left; two specs in its `tests/exports.spec.ts` hold that down, because
+**an alias silently wins over `node_modules`** and in CI, where the sibling checkout does not exist,
+the mapping falls through and both lanes agree again - which makes the divergence a property of the
+machine rather than of the code. `durabledb` is green against the published package: `bun run
+typecheck` clean, 124 assertions passing.
 
 `drupflare/worker` still has its own copies of these modules under `src/runtime/` and there is **no
 sync check** for duplicated TypeScript the way there is for duplicated PHP. That is the reason to
