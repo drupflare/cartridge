@@ -1,5 +1,5 @@
-<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>ADVANCED_USAGE | @drupflare/cartridge - v0.1.3</title><meta name="description" content="Documentation for @drupflare/cartridge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
-<div class="tsd-toolbar-contents container"><a href="../index.html" class="title">@drupflare/cartridge - v0.1.3</a>
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>ADVANCED_USAGE | @drupflare/cartridge - v0.2.0</title><meta name="description" content="Documentation for @drupflare/cartridge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="../index.html" class="title">@drupflare/cartridge - v0.2.0</a>
 <div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
 <ul role="listbox" id="tsd-search-results"></ul>
 <div id="tsd-search-status" aria-live="polite" aria-atomic="true">
@@ -63,10 +63,10 @@ There is no third state. Run the lane with <code>bun run test:interpreters</code
 <td>a second build: exports <code>callMain</code> and <code>FS</code>, serves Drupal 11 on a deployed Worker</td>
 </tr>
 <tr>
-<td>Java</td>
+<td>Java, @gmitch215/bytebox 1.0.0</td>
 <td>yes</td>
-<td><strong>Not verified</strong></td>
-<td>no Java-on-wasm runtime is published to npm; see <a href="#java">Java</a></td>
+<td><strong>Verified</strong></td>
+<td>npm ships the loader, not a runtime; the lane carries the 19 KB compiled program</td>
 </tr>
 </tbody>
 </table>
@@ -80,6 +80,11 @@ drives; the one in <a href="https://github.com/drupflare/worker"><code>drupflare
 exports <code>callMain</code> and <code>FS</code> directly, and runs on the edge. Neither is evidence for the other.</p>
 <p>Two languages are absent from the table with nothing to install: <code>webperl</code>, <code>bash-wasm</code>,
 <code>wasm-bash</code> and <code>busybox-wasm</code> are all 404 on npm, so Perl and bash have no candidate build.</p>
+<p>Java is Verified on a different arrangement of the same parts. It is the only compiled language
+here: <code>@gmitch215/bytebox</code> publishes a loader and a Gradle build produces the wasm, so what npm
+installs is the loader and the wasm is the program rather than a language runtime. The lane carries
+that program as a committed 19 KB <code>tests/fixtures/java.wasm</code> and drives it through the installed
+loader.</p>
 <p>Every recipe's adapter shape is also exercised over stand-in modules in
 <a href="../media/recipes.spec.ts"><code>tests/recipes.spec.ts</code></a>, in the workerd lane.</p>
 <hr>
@@ -120,7 +125,7 @@ once at instantiation, before any script has been written, and <code>callMain</c
 <li><code>-sMODULARIZE=1</code>, so you get a factory to call inside <code>instantiate</code>.</li>
 </ul>
 <div class="tsd-alert tsd-alert-important"><div class="tsd-alert-title"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><use href="../assets/icons.svg#icon-alertImportant"></use></svg><span>Important</span></div><p>
-<strong>No off-the-shelf build in this document exports <code>callMain</code>.</strong> Five were installed and checked:</p>
+<strong>No off-the-shelf build in this document exports <code>callMain</code>.</strong> Six were installed and checked:</p>
 <table>
 <thead>
 <tr>
@@ -153,6 +158,11 @@ once at instantiation, before any script has been written, and <code>callMain</c
 <tr>
 <td>php-wasm 0.1.0 (PHP 8.3)</td>
 <td>real emscripten, complete</td>
+<td>not exported</td>
+</tr>
+<tr>
+<td>@gmitch215/bytebox (Java)</td>
+<td>none at all</td>
 <td>not exported</td>
 </tr>
 </tbody>
@@ -331,71 +341,67 @@ directory, so the script is not handed to Ruby as a string.</p>
 contract emscripten's <code>print</code> has, so the mask records one enter per line either way.</p>
 <hr>
 <h2 id="java" class="tsd-anchor-link">Java<a href="#java" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
-<p><strong>Not verified.</strong> No published package ships a Java-on-wasm runtime this package could drive. The
-search is recorded so it can be re-run rather than repeated.</p>
+<p><strong>Verified</strong> against <code>@gmitch215/bytebox</code> 1.0.0. Earlier notes here recorded a search that found
+nothing to install: <code>teavm</code> and <code>cheerpj</code> are not published to npm, <code>doppiojvm</code> last released
+2016-10-30 and is TypeScript rather than wasm. <a href="https://github.com/gmitch215/bytebox">bytebox</a> is a
+Java-on-wasm toolchain that does publish, and the code below is what
+<a href="../media/real-builds.spec.ts"><code>tests/interpreters/real-builds.spec.ts</code></a> runs.</p>
+<p>Java is not an interpreter, which is what makes the recipe a different shape. bytebox compiles Java
+ahead of time through TeaVM's WasmGC backend and the npm package is the loader that runs the result,
+so the wasm is your program rather than a language runtime and a JDK 21 and Gradle build produces
+it. That is also what Verified covers here and does not cover for the other five: the loader comes
+off npm, and the program the lane drives it with is a 19 KB fixture in this repository.</p>
+<p>Three consequences for the adapter:</p>
 <table>
 <thead>
 <tr>
-<th>Looked for</th>
-<th>Found</th>
-<th>Why it cannot be driven</th>
+<th></th>
+<th>Why</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>npm view teavm</code></td>
-<td>not published. <code>create-teavm-app</code> is a scaffolder; TeaVM itself is a Maven/Gradle compiler</td>
-<td>there is no runtime artifact to import. Output comes from a JDK build, and it is not emscripten</td>
+<td><code>FS</code> is <code>createMemoryFS()</code></td>
+<td>TeaVM emits no emscripten runtime, so there is no filesystem of the build's to hand over</td>
 </tr>
 <tr>
-<td><code>npm view cheerpj</code>, <code>@leaningtech/*</code></td>
-<td>not published under either name</td>
-<td>CheerpJ loads its JVM from <code>cjrtnc.leaningtech.com</code> and targets a browser, so there is no local wasm</td>
+<td>the program reads through a module you supply</td>
+<td><code>load({ modules })</code> resolves a specifier the Java source imported; nothing looks it up on disk</td>
 </tr>
 <tr>
-<td><code>npm view doppiojvm</code></td>
-<td>published, last release 2016-10-30</td>
-<td>a JVM in TypeScript, not wasm. No <code>FS</code>, no <code>callMain</code></td>
-</tr>
-<tr>
-<td>npm search <code>java-wasm</code>, <code>jvm-wasm</code></td>
-<td>tree-sitter grammars, PGP libraries, <code>workerd</code> itself</td>
-<td>nothing that runs Java</td>
+<td><code>callMain</code> is <code>async</code></td>
+<td>a Java thread here is a fiber on the host queue, and work <code>main</code> queued has not run when it returns</td>
 </tr>
 </tbody>
 </table>
-<p>Three routes remain:</p>
-<table>
-<thead>
-<tr>
-<th>Route</th>
-<th>What it is</th>
-<th>Adapter</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>TeaVM (wasm-gc backend)</td>
-<td>Java compiled ahead of time to wasm</td>
-<td>no emscripten and no <code>FS</code>; supply <code>createMemoryFS()</code> or your own <code>MountFS</code></td>
-</tr>
-<tr>
-<td>CheerpJ</td>
-<td>a JVM in wasm, browser-oriented</td>
-<td>its entry point is its own loader API; library-style, like <a href="#quickjs">QuickJS</a></td>
-</tr>
-<tr>
-<td>a JVM built to wasm</td>
-<td>e.g. via an emscripten port</td>
-<td><code>{ FS, callMain }</code> could exist directly, and the size problem lives here</td>
-</tr>
-</tbody>
-</table>
-<p>With an emscripten <code>FS</code>, the <code>main()</code> recipe applies with
-<code>argv: (path) =&gt; ['java', '-cp', '/cartridge', 'Main']</code> and the class written by <code>files</code> rather than
-by <code>run()</code>.</p>
-<p><strong>Size is the blocker, not the interface.</strong> The free-tier ceiling <code>drupflare/worker</code> works against is
-3 MB gzipped for the whole bundle, and PHP 8.3 with a trimmed extension set lands at 2.87 MB of it.</p>
+<pre><code class="java">@JSBody(
+	params = "path",
+	imports = @JSBodyImport(alias = "fs", fromModule = "cartridge:fs"),
+	script = "return fs.readText(path);"
+)
+private static native String readText(String path);
+
+public static void main(String[] args) {
+	System.out.println(readText(args[args.length - 1]));
+}
+</code><button type="button">Copy</button></pre>
+
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">createCartridge</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">createMemoryFS</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-3">type</span><span class="hl-1"> </span><span class="hl-4">Interpreter</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-3">type</span><span class="hl-1"> </span><span class="hl-4">InterpreterIo</span><br/><span class="hl-1">} </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@drupflare/cartridge&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">load</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@gmitch215/bytebox&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-5">*</span><span class="hl-1"> </span><span class="hl-3">as</span><span class="hl-1"> </span><span class="hl-4">runtime</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;./app.wasm-runtime.js&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-4">bytes</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;./app.wasm&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">fs</span><span class="hl-1"> = </span><span class="hl-0">createMemoryFS</span><span class="hl-1">();</span><br/><span class="hl-5">let</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">: </span><span class="hl-8">InterpreterIo</span><span class="hl-1"> | </span><span class="hl-8">undefined</span><span class="hl-1">;</span><br/><br/><span class="hl-7">// module scope: load() compiles wasm, and workerd allows that only during module evaluation</span><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">module</span><span class="hl-1"> = </span><span class="hl-0">load</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">runtime</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">bytes</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">print</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">line</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">?.</span><span class="hl-0">print</span><span class="hl-1">(</span><span class="hl-4">line</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">printErr</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">line</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-4">io</span><span class="hl-1">?.</span><span class="hl-0">printErr</span><span class="hl-1">(</span><span class="hl-4">line</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">modules:</span><span class="hl-1"> { </span><span class="hl-2">&#39;cartridge:fs&#39;</span><span class="hl-4">:</span><span class="hl-1"> { </span><span class="hl-0">readText</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">path</span><span class="hl-1">: </span><span class="hl-8">string</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-4">fs</span><span class="hl-1">.</span><span class="hl-0">readText</span><span class="hl-1">(</span><span class="hl-4">path</span><span class="hl-1">) ?? </span><span class="hl-5">null</span><span class="hl-1"> } }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">java</span><span class="hl-1"> = </span><span class="hl-0">createCartridge</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">instantiate</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">collectors</span><span class="hl-1">): </span><span class="hl-8">Interpreter</span><span class="hl-1"> </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">io</span><span class="hl-1"> = </span><span class="hl-4">collectors</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">FS:</span><span class="hl-1"> </span><span class="hl-4">fs</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-0">callMain</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">async</span><span class="hl-1"> (</span><span class="hl-4">argv</span><span class="hl-1">): </span><span class="hl-8">Promise</span><span class="hl-1">&lt;</span><span class="hl-8">number</span><span class="hl-1">&gt; </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-3">try</span><span class="hl-1"> {</span><br/><span class="hl-1">          </span><span class="hl-8">module</span><span class="hl-1">.</span><span class="hl-0">call</span><span class="hl-1">(</span><span class="hl-2">&#39;main&#39;</span><span class="hl-1">, </span><span class="hl-4">argv</span><span class="hl-1">);</span><br/><span class="hl-1">          </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">drain</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-8">module</span><span class="hl-1">.</span><span class="hl-0">drainAsync</span><span class="hl-1">();</span><br/><span class="hl-1">          </span><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-4">drain</span><span class="hl-1">.</span><span class="hl-4">drained</span><span class="hl-1">) {</span><br/><span class="hl-1">            </span><span class="hl-4">collectors</span><span class="hl-1">.</span><span class="hl-0">printErr</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-5">${</span><span class="hl-4">drain</span><span class="hl-13">.</span><span class="hl-4">pending</span><span class="hl-5">}</span><span class="hl-2"> fiber(s) still queued after main`</span><span class="hl-1">);</span><br/><span class="hl-1">            </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-9">1</span><span class="hl-1">;</span><br/><span class="hl-1">          }</span><br/><span class="hl-1">          </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-9">0</span><span class="hl-1">;</span><br/><span class="hl-1">        } </span><span class="hl-3">catch</span><span class="hl-1"> (</span><span class="hl-4">cause</span><span class="hl-1">) {</span><br/><span class="hl-1">          </span><span class="hl-4">collectors</span><span class="hl-1">.</span><span class="hl-0">printErr</span><span class="hl-1">(</span><span class="hl-2">`Exception in thread &quot;main&quot; </span><span class="hl-5">${</span><span class="hl-0">String</span><span class="hl-13">(</span><span class="hl-4">cause</span><span class="hl-13">)</span><span class="hl-5">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">          </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-9">1</span><span class="hl-1">;</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    };</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-4">scriptName:</span><span class="hl-1"> </span><span class="hl-2">&#39;main.txt&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">argv</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">path</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> [</span><span class="hl-2">&#39;java&#39;</span><span class="hl-1">, </span><span class="hl-4">path</span><span class="hl-1">]</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-1">(</span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">java</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&#39;from the cartridge&#39;</span><span class="hl-1">)).</span><span class="hl-0">lastLine</span><span class="hl-1">(); </span><span class="hl-7">// &quot;from the cartridge&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>The boot order is inverted from every other recipe here.</strong> The others build their interpreter inside
+<code>instantiate</code>, which runs lazily inside a request. This one compiles at module scope and rebinds the
+collectors per instantiate, because that is the only place a Worker permits wasm compilation. The
+consequence is that <strong>one <code>load()</code> serves one cartridge</strong>: a second cartridge over the same module
+overwrites <code>io</code> and both cartridges' output cross-wires.</p>
+<p><strong>A script is data, not code.</strong> An ahead-of-time compiled program is whatever was compiled; <code>run()</code>
+writes bytes and the path arrives as the last element of argv, so the recipe is <code>run()</code> for input and
+<code>runFile()</code> for something mounted earlier. <code>writeJson</code> round-trips through the same path.</p>
+<p><strong>Size is the one thing this recipe has that the others do not.</strong> The wasm holds your program and the
+part of the class library it reaches, not a language runtime: the lane's fixture is 19,698 bytes, and
+bytebox's own hello world is 16,539 raw and 6,996 gzipped against a 3 MB ceiling. Pyodide's wasm alone
+is 9.6 MB and CRuby's is 30 MB. This is the only row in the table that fits a free-tier Worker with
+room left over.</p>
 <hr>
 <h2 id="structured-input-and-output" class="tsd-anchor-link">Structured Input and Output<a href="#structured-input-and-output" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p><strong>Verified</strong> against Pyodide, CRuby and PHP. No <code>TextEncoder</code> or <code>TextDecoder</code> in caller code.</p>
@@ -632,7 +638,7 @@ report is missing.</li>
 <li><a href="#the-verification-lanes"><span>The <wbr/>Verification <wbr/>Lanes</span></a></li>
 <li><a href="#things-that-will-bite-you"><span>Things <wbr/>That <wbr/>Will <wbr/>Bite <wbr/>You</span></a></li></ul></div></details></div>
 <div class="site-menu">
-<nav class="tsd-navigation"><a href="../modules.html">@drupflare/cartridge - v0.1.3</a>
+<nav class="tsd-navigation"><a href="../modules.html">@drupflare/cartridge - v0.2.0</a>
 <ul class="tsd-small-nested-navigation" id="tsd-nav-container">
 <li>Loading...</li></ul></nav></div></div></div><footer>
 <p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>

@@ -199,3 +199,79 @@ describe('recipe: files that outlive one run', () => {
 		expect(writes).toBe(3);
 	});
 });
+
+describe('recipe: an ahead-of-time compiled program (the Java shape)', () => {
+	it('reaches the filesystem through a supplied module rather than through the build', async () => {
+		/**
+		 * The shape a compiled language has: no emscripten, no `FS` of its own, and a script that is
+		 * data rather than code. The program is whatever was compiled; the path a cartridge writes to
+		 * arrives as the last element of argv, and the program reads it back through a module the
+		 * adapter hands the loader under whatever name the source imported.
+		 */
+		const fs = createMemoryFS();
+		// stands in for the compiled program, reading the same way it would over its import
+		const program = (modules: Record<string, { readText(p: string): string | null }>) => ({
+			main(argv: string[]): void {
+				const path = argv[argv.length - 1] ?? '';
+				printed.push(`read:${modules['cartridge:fs']?.readText(path) ?? 'null'}`);
+			}
+		});
+		const printed: string[] = [];
+
+		const cartridge = createCartridge({
+			instantiate: (io): Interpreter => {
+				const compiled = program({
+					'cartridge:fs': { readText: (p) => fs.readText(p) ?? null }
+				});
+				return {
+					FS: fs,
+					callMain: (argv: string[]): number => {
+						compiled.main(argv);
+						printed.forEach((line) => io.print(line));
+						printed.length = 0;
+						return 0;
+					}
+				};
+			},
+			scriptName: 'main.txt',
+			argv: (path) => ['java', path]
+		});
+
+		const result = await cartridge.run('from the cartridge');
+		expect(result.stdoutText.trim()).toBe('read:from the cartridge');
+		expect(result.path).toBe('/cartridge/main.txt');
+	});
+});
+
+describe('recipe: an adapter whose callMain is asynchronous', () => {
+	it('awaits the status rather than reporting NaN or 0', async () => {
+		// an emscripten build answers synchronously; an adapter over an ahead-of-time compiled
+		// program has a queue to drain after main returns, and that is only reachable with an await
+		const cartridge = createCartridge({
+			instantiate: (io): Interpreter => ({
+				FS: createMemoryFS(),
+				callMain: async (): Promise<number> => {
+					await Promise.resolve();
+					io.print('drained');
+					return 7;
+				}
+			})
+		});
+
+		const result = await cartridge.run('x');
+		expect(result.status).toBe(7);
+		expect(result.stdoutText.trim()).toBe('drained');
+	});
+
+	it('routes a rejected callMain into the interpreter error, not an unhandled rejection', async () => {
+		const cartridge = createCartridge({
+			instantiate: (): Interpreter => ({
+				FS: createMemoryFS(),
+				callMain: (): Promise<number> => Promise.reject(new Error('the drain failed'))
+			})
+		});
+
+		await expect(cartridge.run('x')).rejects.toThrow(InterpreterError);
+		await expect(cartridge.run('x')).rejects.toThrow(/the drain failed/);
+	});
+});

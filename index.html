@@ -1,5 +1,5 @@
-<!DOCTYPE html><html class="default" lang="en" data-base="./"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>@drupflare/cartridge - v0.1.3</title><meta name="description" content="Documentation for @drupflare/cartridge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script defer src="assets/main.js"></script><script async src="assets/icons.js" id="tsd-icons-script"></script><script async src="assets/search.js" id="tsd-search-script"></script><script async src="assets/navigation.js" id="tsd-nav-script"></script><script async src="assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
-<div class="tsd-toolbar-contents container"><a href="index.html" class="title">@drupflare/cartridge - v0.1.3</a>
+<!DOCTYPE html><html class="default" lang="en" data-base="./"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>@drupflare/cartridge - v0.2.0</title><meta name="description" content="Documentation for @drupflare/cartridge"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script defer src="assets/main.js"></script><script async src="assets/icons.js" id="tsd-icons-script"></script><script async src="assets/search.js" id="tsd-search-script"></script><script async src="assets/navigation.js" id="tsd-nav-script"></script><script async src="assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="index.html" class="title">@drupflare/cartridge - v0.2.0</a>
 <div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
 <ul role="listbox" id="tsd-search-results"></ul>
 <div id="tsd-search-status" aria-live="polite" aria-atomic="true">
@@ -7,7 +7,7 @@
 <div class="container container-main">
 <div class="col-content">
 <div class="tsd-page-title">
-<h1>@drupflare/cartridge - v0.1.3</h1></div>
+<h1>@drupflare/cartridge - v0.2.0</h1></div>
 <div class="tsd-panel tsd-typography"><h1 id="🎮-cartridge" class="tsd-anchor-link">🎮 cartridge<a href="#🎮-cartridge" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1>
 <blockquote>
 <p>Run a blocking wasm interpreter inside a Cloudflare Durable Object</p>
@@ -23,9 +23,10 @@ filesystem are wired for you. Every piece stays exported for callers that need t
 <p>The Workers runtime is asynchronous and a wasm interpreter is not. Two overlapping invocations
 share one mutable machine — globals, open file descriptors, session state — and interleave into
 plausible wrong output rather than failing.</p>
-<p>Nothing here is specific to PHP. Five real builds run through <code>tests/interpreters/</code> on every push:
+<p>Nothing here is specific to PHP. Real builds run through <code>tests/interpreters/</code> on every push:
 <strong>PHP 8.3</strong> (php-wasm), <strong>Lua 5.4</strong> (wasmoon), <strong>CPython 3</strong> (Pyodide), <strong>QuickJS</strong>
-(quickjs-emscripten) and <strong>CRuby 3.4</strong> (ruby.wasm, over WASI rather than emscripten). See
+(quickjs-emscripten), <strong>CRuby 3.4</strong> (ruby.wasm, over WASI rather than emscripten) and <strong>Java</strong>
+(bytebox, compiled ahead of time rather than interpreted). See
 <a href="documents/ADVANCED_USAGE.html">ADVANCED_USAGE.md</a> for the per-language status and a recipe for each.</p>
 <hr>
 <h2 id="📋-table-of-contents" class="tsd-anchor-link">📋 Table of Contents<a href="#📋-table-of-contents" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
@@ -76,13 +77,13 @@ scope; neither point can await <code>DecompressionStream</code>, which is also l
 in the filesystem before <code>callMain</code> is entered, and a leaked mask depth is reported by name instead
 of poisoning the next run.</p>
 <p><strong>What your build has to satisfy</strong> is two members:</p>
-<pre><code class="ts"><span class="hl-5">interface</span><span class="hl-1"> </span><span class="hl-8">Interpreter</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">FS</span><span class="hl-1">: </span><span class="hl-8">MountFS</span><span class="hl-1">; </span><span class="hl-7">// emscripten&#39;s FS: mkdir, writeFile, and optionally utime</span><br/><span class="hl-1">  </span><span class="hl-0">callMain</span><span class="hl-1">(</span><span class="hl-4">argv</span><span class="hl-1">: </span><span class="hl-8">string</span><span class="hl-1">[]): </span><span class="hl-8">number</span><span class="hl-1"> | </span><span class="hl-8">void</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+<pre><code class="ts"><span class="hl-5">interface</span><span class="hl-1"> </span><span class="hl-8">Interpreter</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">FS</span><span class="hl-1">: </span><span class="hl-8">MountFS</span><span class="hl-1">; </span><span class="hl-7">// emscripten&#39;s FS: mkdir, writeFile, and optionally utime</span><br/><span class="hl-1">  </span><span class="hl-7">// may answer a promise, for an adapter with work to finish after main returns</span><br/><span class="hl-1">  </span><span class="hl-0">callMain</span><span class="hl-1">(</span><span class="hl-4">argv</span><span class="hl-1">: </span><span class="hl-8">string</span><span class="hl-1">[]): </span><span class="hl-8">number</span><span class="hl-1"> | </span><span class="hl-8">void</span><span class="hl-1"> | </span><span class="hl-8">Promise</span><span class="hl-1">&lt;</span><span class="hl-8">number</span><span class="hl-1"> | </span><span class="hl-8">void</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">}</span>
 </code><button type="button">Copy</button></pre>
 
 <p>which is what emscripten produces for a <code>main()</code>-having program built with <code>-sINVOKE_RUN=0</code> and
 <code>-sEXPORTED_RUNTIME_METHODS=callMain,FS</code>. <strong>Most published builds do not do that</strong>: wasmoon, Pyodide,
-quickjs-emscripten, ruby.wasm and php-wasm were all checked and none of the five exports <code>callMain</code>,
-so writing it as a two-line adapter is the normal case rather than the fallback. <code>createMemoryFS()</code>
+quickjs-emscripten, ruby.wasm, php-wasm and bytebox were all checked and none of the six exports
+<code>callMain</code>, so writing it as a two-line adapter is the normal case rather than the fallback. <code>createMemoryFS()</code>
 supplies the other half when a build has no filesystem either, and <code>FS</code> is three method signatures
 rather than emscripten's object, so a WASI preopen satisfies it too. See the recipes in
 <a href="documents/ADVANCED_USAGE.html">ADVANCED_USAGE.md</a>, each labelled with what was actually run.</p>
@@ -92,59 +93,52 @@ rather than emscripten's object, so a WASI preopen satisfies it too. See the rec
 <thead>
 <tr>
 <th>Module</th>
-<th>Lines</th>
 <th>What it does</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>lazy-fs.ts</code></td>
-<td>563</td>
 <td>MEMFS mount that inflates a file on first open, from layered per-file packs</td>
 </tr>
 <tr>
 <td><code>supervisor.ts</code></td>
-<td>533</td>
 <td>tripwires, the health ledger, the circuit breaker, the repair ladder</td>
 </tr>
 <tr>
 <td><code>cartridge.ts</code></td>
-<td>460</td>
 <td><code>createCartridge()</code>: the high-level default, and <code>RunResult</code></td>
 </tr>
 <tr>
 <td><code>mount.ts</code></td>
-<td>374</td>
 <td>the eager streaming mount, the driver mount, <code>mountRecord()</code>, <code>createMemoryFS()</code></td>
 </tr>
 <tr>
 <td><code>tail-worker.ts</code></td>
-<td>359</td>
 <td>summarises a Tail Worker's events into something a human reads</td>
 </tr>
 <tr>
 <td><code>mask.ts</code></td>
-<td>328</td>
 <td>the refcounted interrupt mask, plus the VM slice counters</td>
 </tr>
 <tr>
-<td><code>serialize.ts</code></td>
-<td>142</td>
-<td><code>Gate</code>: one interpreter, one invocation at a time</td>
+<td><code>inflate.ts</code></td>
+<td>synchronous zstd: content size, <code>inflateZstd</code>, a wasm-backed decoder</td>
 </tr>
 <tr>
 <td><code>util.ts</code></td>
-<td>150</td>
 <td><code>fromUtf8</code>/<code>toUtf8</code>, <code>encodeJson</code>/<code>decodeJson</code>, <code>toBytes</code>, <code>splitLines</code></td>
 </tr>
 <tr>
+<td><code>serialize.ts</code></td>
+<td><code>Gate</code>: one interpreter, one invocation at a time</td>
+</tr>
+<tr>
 <td><code>errors.ts</code></td>
-<td>119</td>
 <td>the five-name error vocabulary, each with a stable dotted <code>code</code></td>
 </tr>
 <tr>
 <td><code>worker-shim.ts</code></td>
-<td>72</td>
 <td>makes the emscripten <code>ENVIRONMENT=worker</code> build instantiate on workerd</td>
 </tr>
 </tbody>
@@ -180,6 +174,10 @@ you do not use.</p>
 <tr>
 <td><code>@drupflare/cartridge/fs</code></td>
 <td>both mounts, <code>mountRecord</code>, <code>createMemoryFS</code>, both pack-index shapes</td>
+</tr>
+<tr>
+<td><code>@drupflare/cartridge/inflate</code></td>
+<td>synchronous zstd, for a pre-compressed module inflated at boot</td>
 </tr>
 <tr>
 <td><code>@drupflare/cartridge/supervisor</code></td>
@@ -442,10 +440,10 @@ declaration, a uniform error vocabulary, ergonomics with an escape hatch, and re
 a green spec.</p>
 <hr>
 <h2 id="🧪-testing" class="tsd-anchor-link">🧪 Testing<a href="#🧪-testing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
-<pre><code class="sh"><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">typecheck</span><br/><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">test</span><span class="hl-1"> </span><span class="hl-7"># in workerd</span><br/><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">test:coverage</span><br/><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">test:interpreters</span><span class="hl-1"> </span><span class="hl-7"># 33 assertions against real wasm builds, in node</span>
+<pre><code class="sh"><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">typecheck</span><br/><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">test</span><span class="hl-1"> </span><span class="hl-7"># in workerd</span><br/><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">test:coverage</span><br/><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">test:interpreters</span><span class="hl-1"> </span><span class="hl-7"># 40 assertions against real wasm builds, in node</span>
 </code><button type="button">Copy</button></pre>
 
-<p><strong>305 passing, 82% of statements.</strong> The gate runs under <code>@cloudflare/vitest-pool-workers</code>, so it
+<p><strong>382 passing, 99% of statements.</strong> The gate runs under <code>@cloudflare/vitest-pool-workers</code>, so it
 executes inside <strong>workerd</strong> rather than Node, and coverage uses <code>provider: 'istanbul'</code> rather than
 <code>v8</code>. That is a runtime fact, not a preference: the v8 provider reads coverage off the Node
 inspector, and these tests run inside workerd's isolate, so it attributes zero while every test
@@ -477,17 +475,14 @@ passes.</p>
 </tr>
 <tr>
 <td>a real wasm interpreter</td>
-<td><code>tests/interpreters/</code> (PHP, Lua, CPython, QuickJS, Ruby)</td>
-<td>that a published build satisfies <code>{ FS, callMain }</code></td>
+<td><code>tests/interpreters/</code> (PHP, Lua, CPython, QuickJS, Ruby, Java)</td>
+<td>that a real build satisfies <code>{ FS, callMain }</code></td>
 </tr>
 </tbody>
 </table>
-<p>That last lane is the only thing that makes <code>ADVANCED_USAGE.md</code> say <strong>Verified</strong>. Its five builds are
+<p>That last lane is the only thing that makes <code>ADVANCED_USAGE.md</code> say <strong>Verified</strong>. Its builds are
 pinned <code>devDependencies</code> so renovate bumps them, and <code>e2e.yml</code> runs it on every push with a guard
 that fails if zero tests ran or any was skipped: a silently skipped lane reads as a pass.</p>
-<p><code>lazy-fs.ts</code> has low line coverage (~11%). <code>mountDrupalLazy()</code> patches MEMFS node internals,
-borrowing <code>stream_ops</code> off a probe node the runtime made, so driving it needs a real emscripten
-build rather than a fake. Its invariants are pinned by source assertions instead.</p>
 <hr>
 <h2 id="🔗-related-repositories" class="tsd-anchor-link">🔗 Related Repositories<a href="#🔗-related-repositories" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <table>
@@ -558,7 +553,7 @@ build rather than a fake. Its invariants are pinned by source assertions instead
 <li><a href="#🔗-related-repositories"><span>🔗 <wbr/>Related <wbr/>Repositories</span></a></li>
 <li><a href="#📄-license"><span>📄 <wbr/>License</span></a></li></ul></div></details></div>
 <div class="site-menu">
-<nav class="tsd-navigation"><a href="modules.html">@drupflare/cartridge - v0.1.3</a>
+<nav class="tsd-navigation"><a href="modules.html">@drupflare/cartridge - v0.2.0</a>
 <ul class="tsd-small-nested-navigation" id="tsd-nav-container">
 <li>Loading...</li></ul></nav></div></div></div><footer>
 <p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
