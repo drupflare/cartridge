@@ -16,9 +16,10 @@ The Workers runtime is asynchronous and a wasm interpreter is not. Two overlappi
 share one mutable machine — globals, open file descriptors, session state — and interleave into
 plausible wrong output rather than failing.
 
-Nothing here is specific to PHP. Five real builds run through `tests/interpreters/` on every push:
+Nothing here is specific to PHP. Real builds run through `tests/interpreters/` on every push:
 **PHP 8.3** (php-wasm), **Lua 5.4** (wasmoon), **CPython 3** (Pyodide), **QuickJS**
-(quickjs-emscripten) and **CRuby 3.4** (ruby.wasm, over WASI rather than emscripten). See
+(quickjs-emscripten), **CRuby 3.4** (ruby.wasm, over WASI rather than emscripten) and **Java**
+(bytebox, compiled ahead of time rather than interpreted). See
 [ADVANCED_USAGE.md](ADVANCED_USAGE.md) for the per-language status and a recipe for each.
 
 ---
@@ -100,14 +101,15 @@ of poisoning the next run.
 ```ts
 interface Interpreter {
   FS: MountFS; // emscripten's FS: mkdir, writeFile, and optionally utime
-  callMain(argv: string[]): number | void;
+  // may answer a promise, for an adapter with work to finish after main returns
+  callMain(argv: string[]): number | void | Promise<number | void>;
 }
 ```
 
 which is what emscripten produces for a `main()`-having program built with `-sINVOKE_RUN=0` and
 `-sEXPORTED_RUNTIME_METHODS=callMain,FS`. **Most published builds do not do that**: wasmoon, Pyodide,
-quickjs-emscripten, ruby.wasm and php-wasm were all checked and none of the five exports `callMain`,
-so writing it as a two-line adapter is the normal case rather than the fallback. `createMemoryFS()`
+quickjs-emscripten, ruby.wasm, php-wasm and bytebox were all checked and none of the six exports
+`callMain`, so writing it as a two-line adapter is the normal case rather than the fallback. `createMemoryFS()`
 supplies the other half when a build has no filesystem either, and `FS` is three method signatures
 rather than emscripten's object, so a WASI preopen satisfies it too. See the recipes in
 [ADVANCED_USAGE.md](ADVANCED_USAGE.md), each labelled with what was actually run.
@@ -116,18 +118,19 @@ rather than emscripten's object, so a WASI preopen satisfies it too. See the rec
 
 ## 🧰 What Is Here
 
-| Module           | Lines | What it does                                                                     |
-| ---------------- | ----- | -------------------------------------------------------------------------------- |
-| `lazy-fs.ts`     | 563   | MEMFS mount that inflates a file on first open, from layered per-file packs      |
-| `supervisor.ts`  | 533   | tripwires, the health ledger, the circuit breaker, the repair ladder             |
-| `cartridge.ts`   | 460   | `createCartridge()`: the high-level default, and `RunResult`                     |
-| `mount.ts`       | 374   | the eager streaming mount, the driver mount, `mountRecord()`, `createMemoryFS()` |
-| `tail-worker.ts` | 359   | summarises a Tail Worker's events into something a human reads                   |
-| `mask.ts`        | 328   | the refcounted interrupt mask, plus the VM slice counters                        |
-| `serialize.ts`   | 142   | `Gate`: one interpreter, one invocation at a time                                |
-| `util.ts`        | 150   | `fromUtf8`/`toUtf8`, `encodeJson`/`decodeJson`, `toBytes`, `splitLines`          |
-| `errors.ts`      | 119   | the five-name error vocabulary, each with a stable dotted `code`                 |
-| `worker-shim.ts` | 72    | makes the emscripten `ENVIRONMENT=worker` build instantiate on workerd           |
+| Module           | What it does                                                                     |
+| ---------------- | -------------------------------------------------------------------------------- |
+| `lazy-fs.ts`     | MEMFS mount that inflates a file on first open, from layered per-file packs      |
+| `supervisor.ts`  | tripwires, the health ledger, the circuit breaker, the repair ladder             |
+| `cartridge.ts`   | `createCartridge()`: the high-level default, and `RunResult`                     |
+| `mount.ts`       | the eager streaming mount, the driver mount, `mountRecord()`, `createMemoryFS()` |
+| `tail-worker.ts` | summarises a Tail Worker's events into something a human reads                   |
+| `mask.ts`        | the refcounted interrupt mask, plus the VM slice counters                        |
+| `inflate.ts`     | synchronous zstd: content size, `inflateZstd`, a wasm-backed decoder             |
+| `util.ts`        | `fromUtf8`/`toUtf8`, `encodeJson`/`decodeJson`, `toBytes`, `splitLines`          |
+| `serialize.ts`   | `Gate`: one interpreter, one invocation at a time                                |
+| `errors.ts`      | the five-name error vocabulary, each with a stable dotted `code`                 |
+| `worker-shim.ts` | makes the emscripten `ENVIRONMENT=worker` build instantiate on workerd           |
 
 ---
 
@@ -143,6 +146,7 @@ you do not use.
 | `@drupflare/cartridge/gate`       | `Gate`, `doGate`, `GateStats`                                        |
 | `@drupflare/cartridge/mask`       | `createMask`, the singleton, `vmFromBinary`, the slice counters      |
 | `@drupflare/cartridge/fs`         | both mounts, `mountRecord`, `createMemoryFS`, both pack-index shapes |
+| `@drupflare/cartridge/inflate`    | synchronous zstd, for a pre-compressed module inflated at boot       |
 | `@drupflare/cartridge/supervisor` | tripwires, `CircuitBreaker`, the ledger DDL                          |
 | `@drupflare/cartridge/tail`       | the Tail Worker handler and its pure reducers                        |
 | `@drupflare/cartridge/util`       | the byte, string and JSON conveniences                               |
@@ -422,10 +426,10 @@ a green spec.
 bun run typecheck
 bun run test # in workerd
 bun run test:coverage
-bun run test:interpreters # 33 assertions against real wasm builds, in node
+bun run test:interpreters # 40 assertions against real wasm builds, in node
 ```
 
-**305 passing, 82% of statements.** The gate runs under `@cloudflare/vitest-pool-workers`, so it
+**382 passing, 99% of statements.** The gate runs under `@cloudflare/vitest-pool-workers`, so it
 executes inside **workerd** rather than Node, and coverage uses `provider: 'istanbul'` rather than
 `v8`. That is a runtime fact, not a preference: the v8 provider reads coverage off the Node
 inspector, and these tests run inside workerd's isolate, so it attributes zero while every test
@@ -433,20 +437,16 @@ passes.
 
 Four brackets, and each one is honest about what it can prove:
 
-| Bracket                     | Where                                                    | Proves                                              |
-| --------------------------- | -------------------------------------------------------- | --------------------------------------------------- |
-| behaviour over a fake       | most specs                                               | the contract, without a 40 MB binary in the way     |
-| the real platform primitive | `mount.spec.ts` (real gzip, real `Response`, `Fetcher`)  | the inflate-and-write path end to end               |
-| source assertions           | `lazy-fs.spec.ts`, part of `mask.spec.ts`                | invariants no fake can reach into                   |
-| a real wasm interpreter     | `tests/interpreters/` (PHP, Lua, CPython, QuickJS, Ruby) | that a published build satisfies `{ FS, callMain }` |
+| Bracket                     | Where                                                          | Proves                                          |
+| --------------------------- | -------------------------------------------------------------- | ----------------------------------------------- |
+| behaviour over a fake       | most specs                                                     | the contract, without a 40 MB binary in the way |
+| the real platform primitive | `mount.spec.ts` (real gzip, real `Response`, `Fetcher`)        | the inflate-and-write path end to end           |
+| source assertions           | `lazy-fs.spec.ts`, part of `mask.spec.ts`                      | invariants no fake can reach into               |
+| a real wasm interpreter     | `tests/interpreters/` (PHP, Lua, CPython, QuickJS, Ruby, Java) | that a real build satisfies `{ FS, callMain }`  |
 
-That last lane is the only thing that makes `ADVANCED_USAGE.md` say **Verified**. Its five builds are
+That last lane is the only thing that makes `ADVANCED_USAGE.md` say **Verified**. Its builds are
 pinned `devDependencies` so renovate bumps them, and `e2e.yml` runs it on every push with a guard
 that fails if zero tests ran or any was skipped: a silently skipped lane reads as a pass.
-
-`lazy-fs.ts` has low line coverage (~11%). `mountDrupalLazy()` patches MEMFS node internals,
-borrowing `stream_ops` off a probe node the runtime made, so driving it needs a real emscripten
-build rather than a fake. Its invariants are pinned by source assertions instead.
 
 ---
 

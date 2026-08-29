@@ -17,7 +17,7 @@ There is no third state. Run the lane with `bun run test:interpreters`.
 | QuickJS, quickjs-emscripten 0.32.0 | yes     | **Verified**     | supplies both members; the build exports no filesystem                             |
 | CRuby 3.4, ruby.wasm 2.10.1        | yes     | **Verified**     | supplies both members; the filesystem is a WASI preopen, not emscripten            |
 | PHP 8.3, `drupflare/worker`        | no      | **Not verified** | a second build: exports `callMain` and `FS`, serves Drupal 11 on a deployed Worker |
-| Java                               | yes     | **Not verified** | no Java-on-wasm runtime is published to npm; see [Java](#java)                     |
+| Java, @gmitch215/bytebox 1.0.0     | yes     | **Verified**     | npm ships the loader, not a runtime; the lane carries the 19 KB compiled program   |
 
 Verified says the build satisfies `{ FS, callMain }`, that a script `cartridge.run()` wrote lands in
 the filesystem the interpreter reads, and that output comes back off `print`. It says nothing about
@@ -31,6 +31,12 @@ exports `callMain` and `FS` directly, and runs on the edge. Neither is evidence 
 
 Two languages are absent from the table with nothing to install: `webperl`, `bash-wasm`,
 `wasm-bash` and `busybox-wasm` are all 404 on npm, so Perl and bash have no candidate build.
+
+Java is Verified on a different arrangement of the same parts. It is the only compiled language
+here: `@gmitch215/bytebox` publishes a loader and a Gradle build produces the wasm, so what npm
+installs is the loader and the wasm is the program rather than a language runtime. The lane carries
+that program as a committed 19 KB `tests/fixtures/java.wasm` and drives it through the installed
+loader.
 
 Every recipe's adapter shape is also exercised over stand-in modules in
 [`tests/recipes.spec.ts`](./tests/recipes.spec.ts), in the workerd lane.
@@ -81,7 +87,7 @@ For a `main()`-having program, emscripten produces both with:
 - `-sMODULARIZE=1`, so you get a factory to call inside `instantiate`.
 
 > [!IMPORTANT]
-> **No off-the-shelf build in this document exports `callMain`.** Five were installed and checked:
+> **No off-the-shelf build in this document exports `callMain`.** Six were installed and checked:
 >
 > | Build                       | `FS`                        | `callMain`   |
 > | --------------------------- | --------------------------- | ------------ |
@@ -90,6 +96,7 @@ For a `main()`-having program, emscripten produces both with:
 > | quickjs-emscripten 0.32.0   | none at all                 | not exported |
 > | ruby.wasm 2.10.1 (CRuby)    | WASI preopen, no emscripten | not exported |
 > | php-wasm 0.1.0 (PHP 8.3)    | real emscripten, complete   | not exported |
+> | @gmitch215/bytebox (Java)   | none at all                 | not exported |
 >
 > PHP 8.3 in `drupflare/worker` exports it, that build having been made with the flag above; the
 > published PHP does not. The `main()` recipe is the exception among published builds and the two-line
@@ -454,30 +461,105 @@ contract emscripten's `print` has, so the mask records one enter per line either
 
 ## Java
 
-**Not verified.** No published package ships a Java-on-wasm runtime this package could drive. The
-search is recorded so it can be re-run rather than repeated.
+**Verified** against `@gmitch215/bytebox` 1.0.0. Earlier notes here recorded a search that found
+nothing to install: `teavm` and `cheerpj` are not published to npm, `doppiojvm` last released
+2016-10-30 and is TypeScript rather than wasm. [bytebox](https://github.com/gmitch215/bytebox) is a
+Java-on-wasm toolchain that does publish, and the code below is what
+[`tests/interpreters/real-builds.spec.ts`](./tests/interpreters/real-builds.spec.ts) runs.
 
-| Looked for                           | Found                                                                                      | Why it cannot be driven                                                                              |
-| ------------------------------------ | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `npm view teavm`                     | not published. `create-teavm-app` is a scaffolder; TeaVM itself is a Maven/Gradle compiler | there is no runtime artifact to import. Output comes from a JDK build, and it is not emscripten      |
-| `npm view cheerpj`, `@leaningtech/*` | not published under either name                                                            | CheerpJ loads its JVM from `cjrtnc.leaningtech.com` and targets a browser, so there is no local wasm |
-| `npm view doppiojvm`                 | published, last release 2016-10-30                                                         | a JVM in TypeScript, not wasm. No `FS`, no `callMain`                                                |
-| npm search `java-wasm`, `jvm-wasm`   | tree-sitter grammars, PGP libraries, `workerd` itself                                      | nothing that runs Java                                                                               |
+Java is not an interpreter, which is what makes the recipe a different shape. bytebox compiles Java
+ahead of time through TeaVM's WasmGC backend and the npm package is the loader that runs the result,
+so the wasm is your program rather than a language runtime and a JDK 21 and Gradle build produces
+it. That is also what Verified covers here and does not cover for the other five: the loader comes
+off npm, and the program the lane drives it with is a 19 KB fixture in this repository.
 
-Three routes remain:
+Three consequences for the adapter:
 
-| Route                   | What it is                          | Adapter                                                                        |
-| ----------------------- | ----------------------------------- | ------------------------------------------------------------------------------ |
-| TeaVM (wasm-gc backend) | Java compiled ahead of time to wasm | no emscripten and no `FS`; supply `createMemoryFS()` or your own `MountFS`     |
-| CheerpJ                 | a JVM in wasm, browser-oriented     | its entry point is its own loader API; library-style, like [QuickJS](#quickjs) |
-| a JVM built to wasm     | e.g. via an emscripten port         | `{ FS, callMain }` could exist directly, and the size problem lives here       |
+|                                               | Why                                                                                                 |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `FS` is `createMemoryFS()`                    | TeaVM emits no emscripten runtime, so there is no filesystem of the build's to hand over            |
+| the program reads through a module you supply | `load({ modules })` resolves a specifier the Java source imported; nothing looks it up on disk      |
+| `callMain` is `async`                         | a Java thread here is a fiber on the host queue, and work `main` queued has not run when it returns |
 
-With an emscripten `FS`, the `main()` recipe applies with
-`argv: (path) => ['java', '-cp', '/cartridge', 'Main']` and the class written by `files` rather than
-by `run()`.
+```java
+@JSBody(
+	params = "path",
+	imports = @JSBodyImport(alias = "fs", fromModule = "cartridge:fs"),
+	script = "return fs.readText(path);"
+)
+private static native String readText(String path);
 
-**Size is the blocker, not the interface.** The free-tier ceiling `drupflare/worker` works against is
-3 MB gzipped for the whole bundle, and PHP 8.3 with a trimmed extension set lands at 2.87 MB of it.
+public static void main(String[] args) {
+	System.out.println(readText(args[args.length - 1]));
+}
+```
+
+```ts
+import {
+  createCartridge,
+  createMemoryFS,
+  type Interpreter,
+  type InterpreterIo
+} from '@drupflare/cartridge';
+import { load } from '@gmitch215/bytebox';
+import * as runtime from './app.wasm-runtime.js';
+import bytes from './app.wasm';
+
+const fs = createMemoryFS();
+let io: InterpreterIo | undefined;
+
+// module scope: load() compiles wasm, and workerd allows that only during module evaluation
+const module = load({
+  runtime,
+  bytes,
+  print: (line) => io?.print(line),
+  printErr: (line) => io?.printErr(line),
+  modules: { 'cartridge:fs': { readText: (path: string) => fs.readText(path) ?? null } }
+});
+
+export const java = createCartridge({
+  instantiate: (collectors): Interpreter => {
+    io = collectors;
+    return {
+      FS: fs,
+      callMain: async (argv): Promise<number> => {
+        try {
+          module.call('main', argv);
+          const drain = await module.drainAsync();
+          if (!drain.drained) {
+            collectors.printErr(`${drain.pending} fiber(s) still queued after main`);
+            return 1;
+          }
+          return 0;
+        } catch (cause) {
+          collectors.printErr(`Exception in thread "main" ${String(cause)}`);
+          return 1;
+        }
+      }
+    };
+  },
+  scriptName: 'main.txt',
+  argv: (path) => ['java', path]
+});
+
+(await java.run('from the cartridge')).lastLine(); // "from the cartridge"
+```
+
+**The boot order is inverted from every other recipe here.** The others build their interpreter inside
+`instantiate`, which runs lazily inside a request. This one compiles at module scope and rebinds the
+collectors per instantiate, because that is the only place a Worker permits wasm compilation. The
+consequence is that **one `load()` serves one cartridge**: a second cartridge over the same module
+overwrites `io` and both cartridges' output cross-wires.
+
+**A script is data, not code.** An ahead-of-time compiled program is whatever was compiled; `run()`
+writes bytes and the path arrives as the last element of argv, so the recipe is `run()` for input and
+`runFile()` for something mounted earlier. `writeJson` round-trips through the same path.
+
+**Size is the one thing this recipe has that the others do not.** The wasm holds your program and the
+part of the class library it reaches, not a language runtime: the lane's fixture is 19,698 bytes, and
+bytebox's own hello world is 16,539 raw and 6,996 gzipped against a 3 MB ceiling. Pyodide's wasm alone
+is 9.6 MB and CRuby's is 30 MB. This is the only row in the table that fits a free-tier Worker with
+room left over.
 
 ---
 

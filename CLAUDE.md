@@ -100,19 +100,23 @@ was parked because it needed `cloudflare:test` and the worker's `SiteDurableObje
 imports nothing but `vitest` and the module under test. Dropping it would have opened a coverage hole
 on a shipped function on the strength of a guess.
 
-## Coverage, and the one module that is structurally low
+## Coverage
 
-`bun run test:coverage` reports **82.4% of statements** over 305 assertions. `lazy-fs.ts` sits at
-~11% and that is structural rather than neglect: `mountDrupalLazy()` patches MEMFS **node internals**,
-borrowing `stream_ops` off a probe node the runtime made, so driving it needs a real emscripten build
-rather than a fake. Its invariants are pinned by source assertions in `lazy-fs.spec.ts`, and the whole
-function still runs in the parent project's suite.
+`bun run test:coverage` reports **99.38% of statements** (811/816) over 382 assertions, every source
+file at or above 98%. Branches are 91.04%, with `worker-shim.ts` and `tail-worker.ts` carrying most
+of what is left.
 
-Everything else is at or above 97% except `tail-worker.ts` branches. The ASSETS-backed mounts are
-driven **for real** - workerd has `Response`, `CompressionStream` and `DecompressionStream`, so a fake
-`Fetcher` over a real gzip member exercises the whole inflate-and-write path.
+**`lazy-fs.ts` was recorded here as structurally stuck near 11%, and that is falsified.** The claim
+was that `mountDrupalLazy()` patches MEMFS node internals and borrows `stream_ops` off a probe node,
+so driving it needed a real emscripten build rather than a fake. `lazy-fs.spec.ts` builds the fake
+and drives the function end to end; the module measures 136/136 statements. Do not reinstate the
+ceiling without a measurement.
 
-`codecov.yml` targets 78%, set just under the measured number rather than from a guess.
+The ASSETS-backed mounts are driven **for real** - workerd has `Response`, `CompressionStream` and
+`DecompressionStream`, so a fake `Fetcher` over a real gzip member exercises the whole
+inflate-and-write path.
+
+`codecov.yml` targets 97%, set just under the measured number rather than from a guess.
 
 ## Conventions
 
@@ -142,15 +146,39 @@ it, drives PHP 8.3 through `pib_run` and passes. The build in `drupflare/worker`
 artifact, exports `{ FS, callMain }` directly, runs on a deployed Worker, and stays Not verified
 because nothing here drives it. Neither row is evidence for the other; do not merge them.
 
-Java is **Not verified after a search rather than instead of one**, and the search is written into
-the recipe: `teavm` and `cheerpj` are not published to npm, `doppiojvm` last released 2016 and is
-TypeScript rather than wasm. Re-run that before changing the label. Same for bash and Perl: no wasm
-build of either is published to npm (`webperl`, `bash-wasm`, `wasm-bash`, `busybox-wasm` all 404).
+**Java is Verified, and what that covers is arranged differently from the other five.**
+`@gmitch215/bytebox` 1.0.0 compiles Java to WasmGC through TeaVM and publishes the LOADER; npm ships
+no runtime, so the lane installs the loader and carries the program itself as a committed 19 KB
+`tests/fixtures/java.wasm`. The package sits in `REQUIRED`, so an absent install turns CI red like
+any other. Do not re-run the old search (`teavm`/`cheerpj` unpublished, `doppiojvm` 2016 and
+TypeScript); it has been answered.
 
-What the five real builds measured, because it is a finding about the contract and not about them:
-**none of wasmoon, Pyodide, quickjs-emscripten, ruby.wasm or php-wasm exports `callMain`.** The edge
-PHP does, having been built to. So the `main()` recipe is the exception, the two-line adapter is the
-normal case, and `MountFS.utime` is optional because wasmoon's real emscripten FS has none. Reading
+Java is also the only **compiled** language here, which is why its recipe inverts the boot order:
+`load()` compiles wasm, a Worker permits that only during module evaluation, so the module is built
+at module scope and the collectors are rebound per `instantiate`. Do not "consistency-fix" it to
+boot inside `instantiate`. One `load()` serves one cartridge; a second overwrites `io` and
+cross-wires both cartridges' output.
+
+`tests/fixtures/java.wasm` and `java.wasm-runtime.js` are build output committed as test input, so
+two rules hold. `*.wasm binary` in `.gitattributes` keeps `* text eol=lf` from normalising the
+module, and `.prettierignore` covers the runtime because it is TeaVM's minified emission and
+formatting it destroys the byte-identity a rebuild is diffed against.
+
+bash and Perl are still absent with nothing to install: `webperl`, `bash-wasm`, `wasm-bash` and
+`busybox-wasm` are all 404 on npm.
+
+What the six real builds measured, because it is a finding about the contract and not about them:
+**none of wasmoon, Pyodide, quickjs-emscripten, ruby.wasm, php-wasm or bytebox exports `callMain`.**
+The edge PHP does, having been built to. So the `main()` recipe is the exception, the two-line adapter
+is the normal case, and `MountFS.utime` is optional because wasmoon's real emscripten FS has none.
+
+**`callMain` was widened to `number | void | Promise<number | void>` and `execute()` awaits it.** The
+Java adapter is the reason: `main` returning is not the program finishing, because a Java thread on
+this target is a fiber on the host queue and draining it is asynchronous. With the old signature
+`Number(callMain(argv) ?? 0)` turned a promise into `NaN`, so the adapter had to call the synchronous
+drain and discard its result -- a run stopped by the fiber budget reported status 0 and its
+continuation printed into whatever run was current later. That is the interleave this package exists
+to prevent, arriving through the adapter. Both recipe specs for it are in `recipes.spec.ts`. Reading
 an unexported member can also **throw** - emscripten swaps in a getter that calls `abort()` - so
 `_entryPointProblem()` guards the read. **`MountFS` is three method signatures, not a reference to
 emscripten's object**, so a WASI preopen directory satisfies it: the Ruby describe mounts through
@@ -169,9 +197,9 @@ instrument was wrong, not the system.
 
 ```sh
 bun run typecheck
-bun run test # 375 assertions across 14 specs, in workerd and node
+bun run test # 382 assertions across 14 specs, in workerd and node
 bun run test:coverage
-bun run test:interpreters # against real wasm builds, in node
+bun run test:interpreters # 40 assertions against real wasm builds, in node
 bunx prettier --check .
 ```
 
