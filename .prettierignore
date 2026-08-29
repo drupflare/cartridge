@@ -5,3 +5,4 @@ coverage/
 bun.lock
 .husky/
 typedoc/
+tests/fixtures/*.wasm-runtime.js

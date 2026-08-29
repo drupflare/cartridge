@@ -3,6 +3,7 @@
 *.jpg binary
 *.ico binary
 *.bin binary
+*.wasm binary
 
 /.github export-ignore
 /.github/** export-ignore
