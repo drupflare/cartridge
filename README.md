@@ -13,7 +13,7 @@ cartridge runs a blocking wasm interpreter inside a Cloudflare Durable Object. P
 filesystem are wired for you. Every piece stays exported for callers that need them directly.
 
 The Workers runtime is asynchronous and a wasm interpreter is not. Two overlapping invocations
-share one mutable machine — globals, open file descriptors, session state — and interleave into
+share one mutable machine (globals, open file descriptors, session state) and interleave into
 plausible wrong output rather than failing.
 
 Nothing here is specific to PHP. Real builds run through `tests/interpreters/` on every push:
@@ -241,16 +241,16 @@ recorded finding about the same defect correlate without a translation table.
 
 `Gate` serialises entry into the interpreter: one invocation at a time, queued in FIFO order.
 
-Every host call is synchronous today, so nothing overlaps yet. One suspending call — JSPI, an
-awaited query, an outbound fetch — is enough for a second request to enter while the first is
+Every host call is synchronous today, so nothing overlaps yet. One suspending call (JSPI, an
+awaited query, an outbound fetch) is enough for a second request to enter while the first is
 parked mid-request.
 
 Two separate mechanisms exist:
 
-| Mechanism                     | Where it works                                   | Why not only this one                                                                     |
-| ----------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| `Gate`                        | a plain Worker, a Durable Object, `wrangler dev` | portable, and what the tests drive                                                        |
-| `ctx.blockConcurrencyWhile()` | a Durable Object only                            | stronger — the runtime stops delivering events — but it caps at 30 s and cannot be nested |
+| Mechanism                     | Where it works                                   | Why not only this one                                                                    |
+| ----------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `Gate`                        | a plain Worker, a Durable Object, `wrangler dev` | portable, and what the tests drive                                                       |
+| `ctx.blockConcurrencyWhile()` | a Durable Object only                            | stronger (the runtime stops delivering events), but it caps at 30 s and cannot be nested |
 
 `doGate(gate, ctx)` is the combination, and the order matters: the gate is entered **first** and the
 block is taken inside it, never the other way round; `blockConcurrencyWhile` cannot nest.
@@ -267,7 +267,7 @@ Pass a `ctx` to `createCartridge()` and you get that automatically.
 
 `mask.ts` is the piece with the least obvious reason to exist. `_zend_wasm_slice_arm(period)` fires
 the VM interrupt on an **opcode counter, not a seam**, and JSPI cannot suspend a stack with a JS
-frame in it — `SuspendError: trying to suspend JS frames`. Several host calls put exactly that frame
+frame in it: `SuspendError: trying to suspend JS frames`. Several host calls put exactly that frame
 under the interpreter's stack: the SQL bridge, the codec inside it, the logger, every capability
 call, every lazy-FS `inflateSync`, and every `print` callback.
 
@@ -290,7 +290,7 @@ const { enters, nested, maxDepth, deferred, violations } = mask.stats();
 
 Four properties, each of which is a way this goes silently wrong without it:
 
-1. **Refcounted.** The cases nest — a host call can trigger a lazy-FS read — and a non-counting
+1. **Refcounted.** The cases nest (a host call can trigger a lazy-FS read) and a non-counting
    mask unmasks at the inner exit.
 2. **A pending flag that fires on unmask.** `zend_wasm_tick_fired()` skips `EG(vm_interrupt)`
    entirely while masked; it does not defer it, so the boundary is lost unless the host remembers it.
@@ -324,15 +324,15 @@ Three mounts, for three different sizes of problem.
 pack is the right answer for an 11,421-file CMS tree and the wrong answer for the three files an
 interpreter needs to run one script.
 
-When the build has **no filesystem of its own** — quickjs-emscripten exports none, and a TeaVM or
-WASI target has no emscripten `FS` either — `createMemoryFS()` is a `MountFS` over a `Map`, with
+When the build has **no filesystem of its own** (quickjs-emscripten exports none, and a TeaVM or
+WASI target has no emscripten `FS` either), `createMemoryFS()` is a `MountFS` over a `Map`, with
 `read()` and `readText()` so the adapter never builds a `TextDecoder`. `MountFS.utime` is optional
 for the same reason: wasmoon's Lua build ships a real emscripten `FS` and no `utime` at all, and only
 `mountDrupalStreaming()` ever calls it.
 
 The lazy mount attacks cold start, measured at 3,754 ms of `cpuTime`
 and **3,066 ms of that was the mount**. Layers merge in order, so a driver or a patch can shadow a
-base pack without either being rebuilt, and `InflateStats` reports what was actually inflated — which
+base pack without either being rebuilt, and `InflateStats` reports what was actually inflated, which
 is the measurement that says whether laziness paid.
 
 > [!IMPORTANT]
@@ -360,8 +360,8 @@ An R2-backed layer costs **zero subrequests**, making R2 the right store for a m
 `supervisor.ts` holds the half of a health layer that must be JavaScript: **a repair path must not
 depend on the subsystem it repairs.**
 
-The interpreter cannot observe a JS throw out of a wasm import — measured twice, `@` and a `catch`
-are both useless and the whole invocation dies — cannot observe its own isolate being killed, and
+The interpreter cannot observe a JS throw out of a wasm import (measured twice, `@` and a `catch`
+are both useless and the whole invocation dies), cannot observe its own isolate being killed, and
 cannot be trusted to fix itself once poisoned. So detection and repair for those classes live out
 here.
 
@@ -384,7 +384,7 @@ const { quarantine, reason } = quarantineDecision(findings);
 ```
 
 **Quarantine beats wrong output.** A 503 with `Retry-After` is a better answer than a 0-byte 200, and
-this project has shipped the 0-byte 200 — then cached it, then served it from the edge.
+this project has shipped the 0-byte 200, then cached it, then served it from the edge.
 
 ---
 
@@ -396,7 +396,7 @@ trace events from inside the platform, continuously and with no operator present
 It also carries the **canary**. The CPU-attribution result the whole slicing design rests on is
 undocumented behaviour: work parked in one Durable Object invocation and resumed in another is
 charged to the **resuming** invocation. If Cloudflare changes that, nothing in the product fails
-loudly — renders just stop fitting. So `evaluateCanary()` re-checks the invariant, with thresholds as
+loudly: renders just stop fitting. So `evaluateCanary()` re-checks the invariant, with thresholds as
 **ratios** rather than milliseconds. Absolute `cpuTime` varies by colo (a render that was
 46 ms on one deploy was 75 ms on another).
 
@@ -409,7 +409,7 @@ importing the platform primitive, and every public module builds on it. That rul
 here.
 
 **cartridge imports nothing from the platform.** `grep -rn "from 'cloudflare" src/` returns nothing.
-The primitive it is about — an emscripten `Module` with an `FS` — is instantiated by the **consumer**
+The primitive it is about (an emscripten `Module` with an `FS`) is instantiated by the **consumer**
 and handed in through `instantiate`, and the Durable Object state arrives as an optional
 `BlockingContext` with one method on it. So the invariant the two-layer split exists to protect is
 already satisfied by there being no platform import to contain.
