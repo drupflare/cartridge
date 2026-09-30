@@ -314,11 +314,11 @@ depths wrong. The singleton stays exported for the single-interpreter case the w
 
 Three mounts, for three different sizes of problem.
 
-| Function                 | For                                               | Cost                                            |
-| ------------------------ | ------------------------------------------------- | ----------------------------------------------- |
-| `mountRecord()`          | a handful of files you have in hand               | none; a plain `Record<string, string \| bytes>` |
-| `mountDrupalStreaming()` | a whole tree, materialised at boot                | one inflate of everything                       |
-| `mountDrupalLazy()`      | a whole tree, inflated per file on first `open()` | one resident compressed blob + an LRU           |
+| Function                 | For                                               | Cost                                                  |
+| ------------------------ | ------------------------------------------------- | ----------------------------------------------------- |
+| `mountRecord()`          | a handful of files you have in hand               | none; a plain `Record<string, string \| bytes>`       |
+| `mountDrupalStreaming()` | a whole tree, materialised at boot                | one inflate of everything                             |
+| `mountDrupalLazy()`      | a whole tree, inflated per file on first `open()` | one compressed blob (resident or in a store) + an LRU |
 
 `mountRecord()` is the one a first use wants, and `createCartridge({ files })` calls it for you. A
 pack is the right answer for an 11,421-file CMS tree and the wrong answer for the three files an
@@ -352,6 +352,20 @@ Two further behaviours:
   request, not an error. If you touch the mount or the snapshot path, that is the invariant.
 
 An R2-backed layer costs **zero subrequests**, making R2 the right store for a mutable layer.
+
+A layer can also leave its blob out of memory. Give it a `store` with a synchronous
+`read(offset, length)` and the mount fetches only the index, then reads each member from the store
+the first time PHP opens it. The read has to be synchronous because PHP's file reads are, so in a
+Durable Object the store is the object's SQLite. The blob then costs storage instead of isolate
+memory; for a 12 MB Drupal pack that is 12 MB of headroom per isolate.
+
+```ts
+const store = {
+  read: (offset: number, length: number) =>
+    new Uint8Array(sql.exec('SELECT substr(data, ?, ?) AS b FROM pack', offset + 1, length).one().b)
+};
+await mountDrupalLazy(binary, env, { layers: [{ prefix: 'drupal-pf', store }] });
+```
 
 ---
 

@@ -75,7 +75,7 @@ describe('the lazy mount does not fetch a database nobody can open', () => {
 		// than no instrument. The count has to follow the flag
 		// the count is derived from the layer list now, not a constant, because an R2 layer
 		// costs no subrequest at all
-		expect(/layers\.filter\(\(l\) => !l\.r2\)\.length \* 2/.test(lazyFsSource)).toBe(true);
+		expect(/l\.r2 \? 0 : l\.store \? 1 : 2/.test(lazyFsSource)).toBe(true);
 		expect(/subrequests:\s*3\s*,/.test(lazyFsSource)).toBe(false);
 	});
 
@@ -198,7 +198,7 @@ describe('N layers, which is what makes runtime module install possible', () => 
 	it('counts subrequests per ASSETS layer and none for R2', () => {
 		// R2 costing no subrequest is the meter that made it the right store for a mutable pack
 		const src = lazyFsSource.slice(lazyFsSource.indexOf('subrequests:'));
-		expect(/layers\.filter\(\(l\) => !l\.r2\)\.length \* 2/.test(src)).toBe(true);
+		expect(/l\.r2 \? 0 : l\.store \? 1 : 2/.test(src)).toBe(true);
 	});
 });
 
@@ -535,6 +535,78 @@ describe('mountDrupalLazy: the patched stream ops', () => {
 		// mmap is a read, so it materialises; msync is not, so it must not
 		expect(node.cfwLoaded).toBe(true);
 		expect(node.stream_ops.msync(stream, new Uint8Array(3), 0, 3, 0)).toBe(3);
+	});
+});
+
+describe('mountDrupalLazy: a layer read from a member store', () => {
+	beforeEach(() => resetMask());
+
+	/** the layer's index on ASSETS and its blob behind a store that records every read */
+	function stored(files: Record<string, string | PackInput>) {
+		const { index, blob } = packLayer(files);
+		const env = assets({ '/drupal-pf/core.pf.json': JSON.stringify(index) });
+		const reads: [number, number][] = [];
+		const store = {
+			read(offset: number, length: number) {
+				reads.push([offset, length]);
+				return blob.slice(offset, offset + length);
+			}
+		};
+		return { env, reads, store };
+	}
+
+	it('fetches only the index and holds no blob', async () => {
+		const { env, store } = stored({ 'index.php': 'alpha', 'core/x.php': 'bravo!' });
+		const { result } = await mount(env, { layers: [{ prefix: 'drupal-pf', store }] });
+		expect(env.asked).toEqual(['/drupal-pf/core.pf.json']);
+		expect(result.blobBytes).toBe(0);
+		expect(result.layers).toEqual([{ name: 'drupal-pf', bytes: 0 }]);
+		expect(result.subrequests).toBe(1);
+	});
+
+	it('reads each member through the store on first open, deflated or stored', async () => {
+		const { env, reads, store } = stored({
+			'a.php': 'alpha',
+			'raw.bin': { data: 'verbatim', stored: true }
+		});
+		const { fs } = await mount(env, { layers: [{ prefix: 'drupal-pf', store }] });
+		expect(reads).toEqual([]);
+		expect(readAll(nodeAt(fs, '/drupal/a.php'))).toBe('alpha');
+		expect(readAll(nodeAt(fs, '/drupal/raw.bin'))).toBe('verbatim');
+		expect(readAll(nodeAt(fs, '/drupal/a.php'))).toBe('alpha');
+		expect(reads.length).toBe(2);
+	});
+
+	it('reads an evicted member again rather than losing it', async () => {
+		const { env, reads, store } = stored({ 'a.php': 'aaaaa', 'b.php': 'bbbbb' });
+		const { fs, result } = await mount(
+			{ ...env, LAZY_FS_BUDGET_BYTES: '5' },
+			{ layers: [{ prefix: 'drupal-pf', store }] }
+		);
+		readAll(nodeAt(fs, '/drupal/a.php'));
+		readAll(nodeAt(fs, '/drupal/b.php'));
+		expect(readAll(nodeAt(fs, '/drupal/a.php'))).toBe('aaaaa');
+		expect(result.inflateStats.reinflated).toBe(1);
+		expect(reads.length).toBe(3);
+	});
+
+	it('keeps a store layer beside a blob layer, each member reading its own', async () => {
+		const low = stored({ 'a.php': 'from the store', 'b.php': 'shadowed' });
+		const high = packLayer({ 'b.php': 'from the blob' });
+		const env = assets({
+			'/drupal-pf/core.pf.json': JSON.stringify(
+				packLayer({ 'a.php': 'from the store', 'b.php': 'shadowed' }).index
+			),
+			'/drupal-opc/core.pf.json': JSON.stringify(high.index),
+			'/drupal-opc/core.pf.bin': high.blob
+		});
+		const { fs, result } = await mount(env, {
+			layers: [{ prefix: 'drupal-pf', store: low.store }, { prefix: 'drupal-opc' }]
+		});
+		expect(readAll(nodeAt(fs, '/drupal/a.php'))).toBe('from the store');
+		expect(readAll(nodeAt(fs, '/drupal/b.php'))).toBe('from the blob');
+		expect(result.blobBytes).toBe(high.blob.length);
+		expect(result.subrequests).toBe(3);
 	});
 });
 

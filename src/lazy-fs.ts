@@ -41,11 +41,23 @@ export interface PerFilePackEntry {
 	__layer?: number;
 }
 
+/**
+ * Where a layer's compressed members live when the blob is not held in memory.
+ *
+ * Reads are synchronous because PHP opens files synchronously; Durable Object SQLite is the store
+ * this exists for. `read` returns exactly `length` bytes starting at the member's blob offset.
+ */
+export interface MemberStore {
+	read(offset: number, length: number): Uint8Array;
+}
+
 /** One layer as a caller writes it: an ASSETS prefix or an R2 key, either of them nameable. */
 export interface LayerSpec {
 	prefix?: string;
 	r2?: string;
 	name?: string;
+	/** members come from here and only the index is fetched, so no blob is resident */
+	store?: MemberStore;
 }
 
 /** One layer after normalisation, which is where the name stops being optional. */
@@ -221,7 +233,15 @@ export function _normaliseLayers(opts: LazyMountOptions): PackLayer[] {
 async function fetchLayer(
 	layer: PackLayer,
 	env: LazyFsEnv
-): Promise<{ index: PerFilePackEntry[]; blob: Uint8Array }> {
+): Promise<{ index: PerFilePackEntry[]; blob: Uint8Array | null }> {
+	if (layer.store && !layer.r2) {
+		const idxRes = await env.ASSETS.fetch(
+			new URL(`https://a.local/${layer.prefix}/core.pf.json`)
+		);
+		if (!idxRes.ok)
+			throw new Error(`per-file pack not reachable: core.pf.json ${idxRes.status}`);
+		return { index: await idxRes.json<PerFilePackEntry[]>(), blob: null };
+	}
 	if (layer.r2) {
 		const bucket = env.MODULE_PACK;
 		if (!bucket) throw new Error(`layer ${layer.name} wants R2 but MODULE_PACK is not bound`);
@@ -298,7 +318,8 @@ export async function mountDrupalLazy(
 				Promise.resolve({ ok: false as const, skipped: true })
 	]);
 
-	// resident for the life of the isolate; each is one whole layer, compressed
+	// resident for the life of the isolate; each is one whole layer, compressed, or null for a
+	// layer whose members come from its store
 	const blobs = layerData.map((d) => d.blob);
 	const index = _mergeLayerIndexes(layerData);
 	const tFetch = Date.now();
@@ -314,9 +335,9 @@ export async function mountDrupalLazy(
 	 * + up to 39 MB inflated = ~52 MB, against the streaming mount's 39 MB. Warm-window
 	 * batching makes that convergence the normal case rather than the tail.
 	 *
-	 * Eviction is only safe because the blob stays resident: dropping contents is
-	 * reversible, so this is a plain LRU rather than a bet about which files are needed
-	 * again. Re-inflating is idempotent and produces identical bytes, so eviction needs
+	 * Eviction is only safe because the blob stays resident, or the store stays readable:
+	 * dropping contents is reversible, so this is a plain LRU rather than a bet about which
+	 * files are needed again. Re-inflating is idempotent and produces identical bytes, so eviction needs
 	 * no bookkeeping beyond the counters.
 	 */
 	const budgetBytes = Number(env?.LAZY_FS_BUDGET_BYTES ?? 20 * 1024 * 1024);
@@ -360,7 +381,7 @@ export async function mountDrupalLazy(
 	}
 
 	/**
-	 * Materialises one node's contents from the resident blob.
+	 * Materialises one node's contents from the resident blob or the layer's store.
 	 *
 	 * Assigning a real Uint8Array to `node.contents` is what makes the node
 	 * indistinguishable from an eagerly-written MEMFS file afterwards, so every other
@@ -382,8 +403,10 @@ export async function mountDrupalLazy(
 		try {
 			// `blobs` and the merged index come from one `layerData`, so `__layer` indexes it
 			// (pinned in lazy-fs.spec.ts); defaulting to 0 would inflate another file silently
-			const blob = blobs[e.__layer!]!;
-			const member = blob.subarray(e.o, e.o + e.c);
+			const blob = blobs[e.__layer!];
+			const member = blob
+				? blob.subarray(e.o, e.o + e.c)
+				: layers[e.__layer!]!.store!.read(e.o, e.c);
 			node.contents = e.s
 				? member.slice()
 				: inflateSync(member, { out: new Uint8Array(e.l) });
@@ -517,16 +540,17 @@ export async function mountDrupalLazy(
 		dbPrefix,
 		files: stats.files,
 		dirs: stats.dirs,
-		blobBytes: blobs.reduce((n, b) => n + b.length, 0),
+		blobBytes: blobs.reduce((n, b) => n + (b?.length ?? 0), 0),
 		// same length by construction: `blobs` is `layerData.map()` and `layerData` is `layers.map()`
-		layers: layers.map((l, i) => ({ name: l.name, bytes: blobs[i]!.length })),
+		layers: layers.map((l, i) => ({ name: l.name, bytes: blobs[i]?.length ?? 0 })),
 		dbBytes,
 		fetchMs: tFetch - t0,
 		nodeMs: Date.now() - tFetch,
 		// counted, not assumed: skipping the database really does spend one fewer
 		// two ASSETS fetches per asset-backed layer, plus the database when asked for. An R2
 		// layer costs no subrequest at all, which is the meter that made R2 the right store
-		subrequests: layers.filter((l) => !l.r2).length * 2 + (wantDatabase ? 1 : 0),
+		subrequests:
+			layers.reduce((n, l) => n + (l.r2 ? 0 : l.store ? 1 : 2), 0) + (wantDatabase ? 1 : 0),
 		budgetBytes,
 		// read after a render to see how much of the tree boot actually touches
 		inflateStats: stats
