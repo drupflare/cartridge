@@ -51,7 +51,7 @@
 		"@gmitch215/bytebox": "^1.0.0",
 		"@ruby/3.4-wasm-wasi": "^2.10.1",
 		"@ruby/wasm-wasi": "^2.10.1",
-		"@vitest/coverage-istanbul": "^4.1.0",
+		"@vitest/coverage-istanbul": "^5.0.0",
 		"husky": "^9.1.7",
 		"lint-staged": "^17.3.0",
 		"php-wasm": "0.1.0",
@@ -62,7 +62,7 @@
 		"quickjs-emscripten": "^0.32.0",
 		"typedoc": "^0.28.20",
 		"typescript": "^5.9.3",
-		"vitest": "^4.1.0",
+		"vitest": "^5.0.0",
 		"wasmoon": "^1.16.0",
 		"wrangler": "^4.20.0"
 	},
