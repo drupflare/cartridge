@@ -21,7 +21,7 @@
 <code>createCartridge()</code> a wasm module and call <code>run()</code>; the reentrancy gate, the interrupt mask and the
 filesystem are wired for you. Every piece stays exported for callers that need them directly.</p>
 <p>The Workers runtime is asynchronous and a wasm interpreter is not. Two overlapping invocations
-share one mutable machine — globals, open file descriptors, session state — and interleave into
+share one mutable machine (globals, open file descriptors, session state) and interleave into
 plausible wrong output rather than failing.</p>
 <p>Nothing here is specific to PHP. Real builds run through <code>tests/interpreters/</code> on every push:
 <strong>PHP 8.3</strong> (php-wasm), <strong>Lua 5.4</strong> (wasmoon), <strong>CPython 3</strong> (Pyodide), <strong>QuickJS</strong>
@@ -275,8 +275,8 @@ recorded finding about the same defect correlate without a translation table.</p
 <hr>
 <h2 id="🚧-reentrancy-gate" class="tsd-anchor-link">🚧 Reentrancy Gate<a href="#🚧-reentrancy-gate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p><code>Gate</code> serialises entry into the interpreter: one invocation at a time, queued in FIFO order.</p>
-<p>Every host call is synchronous today, so nothing overlaps yet. One suspending call — JSPI, an
-awaited query, an outbound fetch — is enough for a second request to enter while the first is
+<p>Every host call is synchronous today, so nothing overlaps yet. One suspending call (JSPI, an
+awaited query, an outbound fetch) is enough for a second request to enter while the first is
 parked mid-request.</p>
 <p>Two separate mechanisms exist:</p>
 <table>
@@ -296,7 +296,7 @@ parked mid-request.</p>
 <tr>
 <td><code>ctx.blockConcurrencyWhile()</code></td>
 <td>a Durable Object only</td>
-<td>stronger — the runtime stops delivering events — but it caps at 30 s and cannot be nested</td>
+<td>stronger (the runtime stops delivering events), but it caps at 30 s and cannot be nested</td>
 </tr>
 </tbody>
 </table>
@@ -312,7 +312,7 @@ you are already inside one.</p>
 <h2 id="🎭-interrupt-mask" class="tsd-anchor-link">🎭 Interrupt Mask<a href="#🎭-interrupt-mask" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p><code>mask.ts</code> is the piece with the least obvious reason to exist. <code>_zend_wasm_slice_arm(period)</code> fires
 the VM interrupt on an <strong>opcode counter, not a seam</strong>, and JSPI cannot suspend a stack with a JS
-frame in it — <code>SuspendError: trying to suspend JS frames</code>. Several host calls put exactly that frame
+frame in it: <code>SuspendError: trying to suspend JS frames</code>. Several host calls put exactly that frame
 under the interpreter's stack: the SQL bridge, the codec inside it, the logger, every capability
 call, every lazy-FS <code>inflateSync</code>, and every <code>print</code> callback.</p>
 <p>So the interrupt has to be held off for the duration of the host call and released after it. The mask
@@ -323,7 +323,7 @@ inferred:</p>
 
 <p>Four properties, each of which is a way this goes silently wrong without it:</p>
 <ol>
-<li><strong>Refcounted.</strong> The cases nest — a host call can trigger a lazy-FS read — and a non-counting
+<li><strong>Refcounted.</strong> The cases nest (a host call can trigger a lazy-FS read) and a non-counting
 mask unmasks at the inner exit.</li>
 <li><strong>A pending flag that fires on unmask.</strong> <code>zend_wasm_tick_fired()</code> skips <code>EG(vm_interrupt)</code>
 entirely while masked; it does not defer it, so the boundary is lost unless the host remembers it.</li>
@@ -372,14 +372,14 @@ violation. Never assert on it.</p>
 <p><code>mountRecord()</code> is the one a first use wants, and <code>createCartridge({ files })</code> calls it for you. A
 pack is the right answer for an 11,421-file CMS tree and the wrong answer for the three files an
 interpreter needs to run one script.</p>
-<p>When the build has <strong>no filesystem of its own</strong> — quickjs-emscripten exports none, and a TeaVM or
-WASI target has no emscripten <code>FS</code> either — <code>createMemoryFS()</code> is a <code>MountFS</code> over a <code>Map</code>, with
+<p>When the build has <strong>no filesystem of its own</strong> (quickjs-emscripten exports none, and a TeaVM or
+WASI target has no emscripten <code>FS</code> either), <code>createMemoryFS()</code> is a <code>MountFS</code> over a <code>Map</code>, with
 <code>read()</code> and <code>readText()</code> so the adapter never builds a <code>TextDecoder</code>. <code>MountFS.utime</code> is optional
 for the same reason: wasmoon's Lua build ships a real emscripten <code>FS</code> and no <code>utime</code> at all, and only
 <code>mountDrupalStreaming()</code> ever calls it.</p>
 <p>The lazy mount attacks cold start, measured at 3,754 ms of <code>cpuTime</code>
 and <strong>3,066 ms of that was the mount</strong>. Layers merge in order, so a driver or a patch can shadow a
-base pack without either being rebuilt, and <code>InflateStats</code> reports what was actually inflated — which
+base pack without either being rebuilt, and <code>InflateStats</code> reports what was actually inflated, which
 is the measurement that says whether laziness paid.</p>
 <div class="tsd-alert tsd-alert-important"><div class="tsd-alert-title"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><use href="assets/icons.svg#icon-alertImportant"></use></svg><span>Important</span></div><p>
 <strong><code>StreamPackEntry</code> and <code>PerFilePackEntry</code> are not one type and must not be merged.</strong> <code>o</code> means
@@ -402,8 +402,8 @@ request, not an error. If you touch the mount or the snapshot path, that is the 
 <h2 id="🩺-supervisor" class="tsd-anchor-link">🩺 Supervisor<a href="#🩺-supervisor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p><code>supervisor.ts</code> holds the half of a health layer that must be JavaScript: <strong>a repair path must not
 depend on the subsystem it repairs.</strong></p>
-<p>The interpreter cannot observe a JS throw out of a wasm import — measured twice, <code>@</code> and a <code>catch</code>
-are both useless and the whole invocation dies — cannot observe its own isolate being killed, and
+<p>The interpreter cannot observe a JS throw out of a wasm import (measured twice, <code>@</code> and a <code>catch</code>
+are both useless and the whole invocation dies), cannot observe its own isolate being killed, and
 cannot be trusted to fix itself once poisoned. So detection and repair for those classes live out
 here.</p>
 <p><strong>Every tripwire corresponds to a defect this project has already shipped and then found.</strong> That is
@@ -414,7 +414,7 @@ the ladder, a clean interval decays one rung, and bounded attempts halt with a n
 </code><button type="button">Copy</button></pre>
 
 <p><strong>Quarantine beats wrong output.</strong> A 503 with <code>Retry-After</code> is a better answer than a 0-byte 200, and
-this project has shipped the 0-byte 200 — then cached it, then served it from the edge.</p>
+this project has shipped the 0-byte 200, then cached it, then served it from the edge.</p>
 <hr>
 <h2 id="📡-tail-worker" class="tsd-anchor-link">📡 Tail Worker<a href="#📡-tail-worker" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p><code>wrangler tail</code> reports CPU only while an operator is attached. A Tail Worker receives the same
@@ -422,7 +422,7 @@ trace events from inside the platform, continuously and with no operator present
 <p>It also carries the <strong>canary</strong>. The CPU-attribution result the whole slicing design rests on is
 undocumented behaviour: work parked in one Durable Object invocation and resumed in another is
 charged to the <strong>resuming</strong> invocation. If Cloudflare changes that, nothing in the product fails
-loudly — renders just stop fitting. So <code>evaluateCanary()</code> re-checks the invariant, with thresholds as
+loudly: renders just stop fitting. So <code>evaluateCanary()</code> re-checks the invariant, with thresholds as
 <strong>ratios</strong> rather than milliseconds. Absolute <code>cpuTime</code> varies by colo (a render that was
 46 ms on one deploy was 75 ms on another).</p>
 <hr>
@@ -431,7 +431,7 @@ loudly — renders just stop fitting. So <code>evaluateCanary()</code> re-checks
 importing the platform primitive, and every public module builds on it. That rule does not transfer
 here.</p>
 <p><strong>cartridge imports nothing from the platform.</strong> <code>grep -rn &quot;from 'cloudflare&quot; src/</code> returns nothing.
-The primitive it is about — an emscripten <code>Module</code> with an <code>FS</code> — is instantiated by the <strong>consumer</strong>
+The primitive it is about (an emscripten <code>Module</code> with an <code>FS</code>) is instantiated by the <strong>consumer</strong>
 and handed in through <code>instantiate</code>, and the Durable Object state arrives as an optional
 <code>BlockingContext</code> with one method on it. So the invariant the two-layer split exists to protect is
 already satisfied by there being no platform import to contain.</p>
