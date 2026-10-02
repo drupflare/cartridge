@@ -18,7 +18,7 @@
         "@vitest/coverage-istanbul": "^4.1.0",
         "husky": "^9.1.7",
         "lint-staged": "^17.3.0",
-        "php-wasm": "0.1.0",
+        "php-wasm": "0.2.0",
         "prettier": "^3.9.6",
         "prettier-plugin-organize-imports": "^4.3.0",
         "prettier-plugin-sh": "^0.20.0",
@@ -449,7 +449,7 @@
 
     "pathe": ["pathe@2.0.3", "", {}, "sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w=="],
 
-    "php-wasm": ["php-wasm@0.1.0", "", {}, "sha512-8mqAUqYugBMT6YR8RC/5K2juvm31zO+KPdWI1Aij6KqFroCoDYSq2tLWTuIpJKx6Nq8o6gnI2jq5yjo3tK62hw=="],
+    "php-wasm": ["php-wasm@0.2.0", "", {}, "sha512-wID1a+RuyIlgk414FoBKM5z9UZ0sD4gl8Lu4fqy3K7d6kdZhfiC9u1/s3xJo5Is8ebj3VLiCVyp9INyZcgLuoA=="],
 
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 
