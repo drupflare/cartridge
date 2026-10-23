@@ -46,7 +46,7 @@
 	},
 	"devDependencies": {
 		"@bjorn3/browser_wasi_shim": "^0.4.2",
-		"@cloudflare/vitest-pool-workers": "^0.22.0",
+		"@cloudflare/vitest-pool-workers": "^0.23.0",
 		"@cloudflare/workers-types": "^5.20260811.1",
 		"@gmitch215/bytebox": "^1.0.0",
 		"@ruby/3.4-wasm-wasi": "^2.10.1",
@@ -54,7 +54,7 @@
 		"@vitest/coverage-istanbul": "^4.1.0",
 		"husky": "^9.1.7",
 		"lint-staged": "^17.3.0",
-		"php-wasm": "0.1.0",
+		"php-wasm": "0.2.0",
 		"prettier": "^3.9.6",
 		"prettier-plugin-organize-imports": "^4.3.0",
 		"prettier-plugin-sh": "^0.20.0",

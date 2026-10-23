@@ -10,7 +10,7 @@
       },
       "devDependencies": {
         "@bjorn3/browser_wasi_shim": "^0.4.2",
-        "@cloudflare/vitest-pool-workers": "^0.22.0",
+        "@cloudflare/vitest-pool-workers": "^0.23.0",
         "@cloudflare/workers-types": "^5.20260811.1",
         "@gmitch215/bytebox": "^1.0.0",
         "@ruby/3.4-wasm-wasi": "^2.10.1",
@@ -18,7 +18,7 @@
         "@vitest/coverage-istanbul": "^4.1.0",
         "husky": "^9.1.7",
         "lint-staged": "^17.3.0",
-        "php-wasm": "0.1.0",
+        "php-wasm": "0.2.0",
         "prettier": "^3.9.6",
         "prettier-plugin-organize-imports": "^4.3.0",
         "prettier-plugin-sh": "^0.20.0",
@@ -71,7 +71,7 @@
 
     "@cloudflare/unenv-preset": ["@cloudflare/unenv-preset@2.16.1", "", { "peerDependencies": { "unenv": "2.0.0-rc.24", "workerd": ">1.20260305.0 <2.0.0-0" }, "optionalPeers": ["workerd"] }, "sha512-ECxObrMfyTl5bhQf/lZCXwo5G6xX9IAUo+nDMKK4SZ8m4Jvvxp52vilxyySSWh2YTZz8+HQ07qGH/2rEom1vDw=="],
 
-    "@cloudflare/vitest-pool-workers": ["@cloudflare/vitest-pool-workers@0.22.0", "", { "dependencies": { "cjs-module-lexer": "1.2.3", "esbuild": "0.28.1", "miniflare": "5.20260815.0-alpha", "wrangler": "4.124.0", "zod": "4.4.3" }, "peerDependencies": { "@vitest/runner": "^4.1.0", "@vitest/snapshot": "^4.1.0", "vitest": "^4.1.0" } }, "sha512-OJv/qikkOgxnKxJ5xrLS7zuOLZhc/6iziU+llqZm4tiQf2CJUYwlMuXN68VaWIQebORd1AUx4w6A0oy8XRbuaQ=="],
+    "@cloudflare/vitest-pool-workers": ["@cloudflare/vitest-pool-workers@0.23.0", "", { "dependencies": { "cjs-module-lexer": "1.2.3", "esbuild": "0.28.1", "miniflare": "5.20260815.0-alpha", "wrangler": "4.124.0", "zod": "4.4.3" }, "peerDependencies": { "@vitest/runner": "^4.1.0", "@vitest/snapshot": "^4.1.0", "vitest": "^4.1.0" } }, "sha512-4giZR3fuY9GcTx6Jb7gZX33SUOgeY7rQSm9qSdf9TPfI8i3fP+P1ZA8BM9rMOSoMtLpwo+Zw5zy3v2Ux7iAvNA=="],
 
     "@cloudflare/workerd-darwin-64": ["@cloudflare/workerd-darwin-64@1.20260804.1", "", { "os": "darwin", "cpu": "x64" }, "sha512-191/PPEFicRK2wK69eXzSjnLgHL79k7zR2VUpyIr8rhFgGns1b5bTHgnBuUrgU2LPbEtwbE5eL2hJ0uhLAFEow=="],
 
@@ -449,7 +449,7 @@
 
     "pathe": ["pathe@2.0.3", "", {}, "sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w=="],
 
-    "php-wasm": ["php-wasm@0.1.0", "", {}, "sha512-8mqAUqYugBMT6YR8RC/5K2juvm31zO+KPdWI1Aij6KqFroCoDYSq2tLWTuIpJKx6Nq8o6gnI2jq5yjo3tK62hw=="],
+    "php-wasm": ["php-wasm@0.2.0", "", {}, "sha512-wID1a+RuyIlgk414FoBKM5z9UZ0sD4gl8Lu4fqy3K7d6kdZhfiC9u1/s3xJo5Is8ebj3VLiCVyp9INyZcgLuoA=="],
 
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 
