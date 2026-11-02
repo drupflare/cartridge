@@ -162,7 +162,8 @@ export function wasmModuleFromZstd(
 ): WebAssembly.Module {
 	const bytes = inflateZstd(blob, options);
 	try {
-		return new WasmModule(bytes);
+		// the decoder allocates a plain ArrayBuffer; its return type only says ArrayBufferLike
+		return new WasmModule(bytes as Uint8Array<ArrayBuffer>);
 	} catch (cause) {
 		const message = cause instanceof Error ? cause.message : String(cause);
 		// the embedder refusal and bad bytes are different faults with the same throw site, and
