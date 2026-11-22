@@ -61,11 +61,21 @@ export interface LazyMountOptions {
 	layers?: LayerSpec[];
 }
 
+/** A layer's packed bytes: a `Uint8Array` is one, and so is a source that reads them from elsewhere. */
+export interface PackBytes {
+	length: number;
+	residentBytes?: number;
+	releaseRange?(bytes: Uint8Array): void;
+	subarray(start: number, end: number): Uint8Array;
+}
+
 /** The bindings a lazy mount reads its layers through, plus the one knob it takes from env. */
 export interface LazyFsEnv {
 	ASSETS: Fetcher;
 	MODULE_PACK?: R2Bucket;
 	LAZY_FS_BUDGET_BYTES?: string | number;
+	/** a layer's bytes from the host's own storage, or undefined to read them from ASSETS */
+	SQL_PACK_SOURCE?: (prefix: string) => Promise<PackBytes | undefined>;
 }
 
 /**
@@ -221,7 +231,7 @@ export function _normaliseLayers(opts: LazyMountOptions): PackLayer[] {
 async function fetchLayer(
 	layer: PackLayer,
 	env: LazyFsEnv
-): Promise<{ index: PerFilePackEntry[]; blob: Uint8Array }> {
+): Promise<{ index: PerFilePackEntry[]; blob: PackBytes }> {
 	if (layer.r2) {
 		const bucket = env.MODULE_PACK;
 		if (!bucket) throw new Error(`layer ${layer.name} wants R2 but MODULE_PACK is not bound`);
@@ -236,6 +246,14 @@ async function fetchLayer(
 			index: await idxObj.json<PerFilePackEntry[]>(),
 			blob: new Uint8Array(await binObj.arrayBuffer())
 		};
+	}
+	const hosted = await env.SQL_PACK_SOURCE?.(layer.prefix ?? 'drupal-pf');
+	if (hosted) {
+		const index = await env.ASSETS.fetch(
+			new URL(`https://a.local/${layer.prefix}/core.pf.json`)
+		);
+		if (!index.ok) throw new Error(`pack index not reachable: core.pf.json ${index.status}`);
+		return { index: await index.json<PerFilePackEntry[]>(), blob: hosted };
 	}
 	const [idxRes, binRes] = await Promise.all([
 		env.ASSETS.fetch(new URL(`https://a.local/${layer.prefix}/core.pf.json`)),
@@ -384,9 +402,13 @@ export async function mountDrupalLazy(
 			// (pinned in lazy-fs.spec.ts); defaulting to 0 would inflate another file silently
 			const blob = blobs[e.__layer!]!;
 			const member = blob.subarray(e.o, e.o + e.c);
-			node.contents = e.s
-				? member.slice()
-				: inflateSync(member, { out: new Uint8Array(e.l) });
+			try {
+				node.contents = e.s
+					? member.slice()
+					: inflateSync(member, { out: new Uint8Array(e.l) });
+			} finally {
+				blob.releaseRange?.(member);
+			}
 			node.usedBytes = node.contents.length;
 			node.cfwLoaded = true;
 			if (node.cfwEvicted) {
@@ -517,7 +539,7 @@ export async function mountDrupalLazy(
 		dbPrefix,
 		files: stats.files,
 		dirs: stats.dirs,
-		blobBytes: blobs.reduce((n, b) => n + b.length, 0),
+		blobBytes: blobs.reduce((n, b) => n + (b.residentBytes ?? b.length), 0),
 		// same length by construction: `blobs` is `layerData.map()` and `layerData` is `layers.map()`
 		layers: layers.map((l, i) => ({ name: l.name, bytes: blobs[i]!.length })),
 		dbBytes,
