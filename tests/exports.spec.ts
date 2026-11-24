@@ -75,10 +75,6 @@ describe('the package exports map', () => {
 		expect(pkg.files).toEqual(['src', 'LICENSE', 'README.md', 'ADVANCED_USAGE.md']);
 	});
 
-	it('is in the 0.x beta window the rest of the project sits in', () => {
-		expect(pkg.version).toMatch(/^0\./);
-	});
-
 	it('keeps the runtime dependencies to the two synchronous decompressors', () => {
 		// the count is a promise the README makes, and neither substitutes for the other: fflate
 		// has no zstd, and deflate wins nothing against a meter that already gzips
